@@ -5,3 +5,4 @@ Packages installed:
     numpy
     scipy
     networkx
+    matplotlib
