@@ -24,19 +24,22 @@ try:
 
 
     # Build (sparse) constraint matrix 
-    #   loop over channels      -> checks channel capacity
+    # Build rhs vector (done simultaneously (same loops))
+    #   loop over channels      -> checks capacity of all channels
+    #       constraint matrix   -> per row relevant routing_fees and trans_amounts will be added 
+    #       rhs vector          -> respective channel capacity
 
-    #   + 1                     -> checks percentage of successful transactions
+    #   + 1                     -> percentage of successful transaction amounts
+    #       constraint          -> all trans_amounts
+    #       rhs                 -> c_tr times total trans_amount
 
-    #   loop over transactions  -> checks that transactions are unique
+    #   + 1*                    -> percentage of successful transactions
+    #       constraint          -> all paths
+    #       rhs                 -> c_tr times number of transactions
 
-
-    # Build rhs vector (probably done while building the constraint matrix (same loops))
-    # loop over channels        ->
-
-    # + 1                       -> 
-
-    # loop over transactions    ->
+    #   loop over transactions  -> checks that transactions are uniquely successful
+    #       constraint          -> per row all paths of relevant transactions 
+    #       rhs                 -> element of {0,1}
 
 
     # Add constraints
