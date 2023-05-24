@@ -6,20 +6,18 @@ import numpy as np
 import scipy.sparse as sp
 import networkx as nx
 import matplotlib.pyplot as plt
-import ilpUtils
-
-
+import baselineIlpUtils
 
 
 try:
     # Input 
-    G = ilpUtils.read_network("tests/test1-graph.txt")  # load network from a list of edges with respective capacity, base fee, and routing fee
-    T = ilpUtils.read_transactions("tests/test1-transactions.txt")  # loads transaction as tuples like: tuple(start, dest, amount)
-    P = ilpUtils.read_paths(G, T)   # finds all possible paths for every transaction using an nx function
-    prop_fee, base_fee = 0.01, 1    # sets prop and base fee (possible to be individually set later)
-    c_tr, transaction_percentage = 0.8, 1   # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
+    G = baselineIlpUtils.read_network("tests/test1-graph.txt")              # load network from a list of edges with respective capacity, base fee, and routing fee
+    T = baselineIlpUtils.read_transactions("tests/test1-transactions.txt")  # loads transaction as tuples like: tuple(start, dest, amount)
+    P = baselineIlpUtils.read_paths(G, T)                                   # finds all possible paths for every transaction using an nx function
+    prop_fee, base_fee = 0.01, 1                                            # sets prop and base fee (possible to be individually set later)
+    c_tr, transaction_percentage = 0.8, 1                                   # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
     #   needed vars for ILP operations: 
-    row_cons_iterator = 0           # sets the currently respected constraint/ row in sparse matrix and in the rhs vector
+    row_cons_iterator = 0                                                   # sets the currently respected constraint/ row in sparse matrix and in the rhs vector
     val_dyn = []
     row_dyn = []
     col_dyn = []
@@ -32,7 +30,7 @@ try:
     x = m.addMVar(shape=len(P), vtype=GRB.BINARY, name="x")
 
     # Set objective                 -> routing_fee(t, p, ch_ij)
-    fee_dict, obj = ilpUtils.set_objective(P, T, prop_fee, base_fee)
+    fee_dict, obj = baselineIlpUtils.set_objective(P, T, prop_fee, base_fee)
     m.setObjective(obj @ x, GRB.MINIMIZE)
 
     # Build (sparse) constraint matrix 
@@ -40,7 +38,7 @@ try:
     #   loop over channels      -> checks capacity of all channels
     #       constraint matrix   -> per row relevant routing_fees and trans_amounts will be added 
     #       rhs vector          -> respective channel capacity
-    val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs = ilpUtils.capacity_constraints(G, T, P, fee_dict, val_dyn, row_dyn, col_dyn, row_cons_iterator)
+    val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs = baselineIlpUtils.capacity_constraints(G, T, P, fee_dict, val_dyn, row_dyn, col_dyn, row_cons_iterator)
 
     #   + 1                     -> percentage of successful transaction amounts
     #       constraint          -> all trans_amounts
@@ -48,11 +46,11 @@ try:
     #   + 1*                    -> percentage of successful transactions
     #       constraint          -> all paths
     #       rhs                 -> c_tr times number of transactions
-    val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs = ilpUtils.transaction_constraint(T, P, val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs, c_tr, transaction_percentage)
+    val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs = baselineIlpUtils.transaction_constraint(T, P, val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs, c_tr, transaction_percentage)
     #   loop over transactions  -> checks that transactions are uniquely successful
     #       constraint          -> per row all paths of relevant transactions 
     #       rhs                 -> element of {0,1}
-    val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs = ilpUtils.transaction_uniqueness(T, P, val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs)
+    val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs = baselineIlpUtils.transaction_uniqueness(T, P, val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs)
 
     # build A sparse matrix
     A = sp.csr_matrix((np.array(val_dyn), (np.array(row_dyn), np.array(col_dyn))), shape=(len(rhs), len(P)))
@@ -79,7 +77,6 @@ try:
             nx.drawing.nx_pylab.draw(G, with_labels=True, edge_color=edge_colors)
         index += 1
     plt.show()
-
 except gp.GurobiError as e:
     print('Error code ' + str(e.errno) + ": " + str(e))
 
