@@ -1,5 +1,9 @@
 # 
 src/networkPlayground.py
+src/notes.txt
+src/notesUtils.txt
+tests/test1-graph.txt
+tests/test1-transactions.txt
 .DS_Store
 
 # Byte-compiled / optimized / DLL files
