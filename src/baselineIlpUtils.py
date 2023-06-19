@@ -84,24 +84,22 @@ def capacity_constraints(G, T, P, fee_dict, val_dyn, row_dyn, col_dyn, row_cons_
     return val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs
 
 def transaction_constraint(T, P, val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs, c_tr, transaction_percentage):
+    col_path_iterator = 0
     if transaction_percentage == 0:
-        col_path_iterator = 0
         for path in P:
             val_dyn.append(int(T[path[1]][2]))
             row_dyn.append(row_cons_iterator)
             col_dyn.append(col_path_iterator)
             col_path_iterator += 1
         rhs[row_cons_iterator] = c_tr * sum_of_T(T)
-        row_cons_iterator += 1
     else:
-        col_path_iterator = 0
         for path in P:
             val_dyn.append(1)
             row_dyn.append(row_cons_iterator)
             col_dyn.append(col_path_iterator)
             col_path_iterator += 1
         rhs[row_cons_iterator] = c_tr * len(T)
-        row_cons_iterator += 1
+    row_cons_iterator += 1
     return val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs
 
 def transaction_uniqueness(T, P, val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs):
