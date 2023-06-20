@@ -37,7 +37,9 @@ def find_vc_edges(G, level=0):
                     intermediary_edges.append(second_edge)
                     if not((node, second_edge[1], intermediaries) in tmp):
                             if not((second_edge[1], node, intermediaries) in tmp):
-                                vc_edges.append((node, second_edge[1], {"routing_fee_base": 1, "routing_fee_prop": 0.01, "intermediaries": intermediaries,"intermediary_edges": intermediary_edges}))
+                                max_base_fee = max(G.get_edge_data(first_edge[0], first_edge[1], key=first_edge[2])["routing_fee_base"], G.get_edge_data(second_edge[0], second_edge[1], key=second_edge[2])["routing_fee_base"])
+                                max_prop_fee = max(G.get_edge_data(first_edge[0], first_edge[1], key=first_edge[2])["routing_fee_prop"], G.get_edge_data(second_edge[0], second_edge[1], key=second_edge[2])["routing_fee_prop"])
+                                vc_edges.append((node, second_edge[1], {"routing_fee_base": max_base_fee, "routing_fee_prop": max_prop_fee, "intermediaries": intermediaries,"intermediary_edges": intermediary_edges}))
                                 tmp.append((node, second_edge[1], intermediaries))
     G.add_edges_from(vc_edges)
     if level == 0:
@@ -72,14 +74,14 @@ def calc_fee_objective(P, T, G, obj):
         trans_amount = int(T[path[1]][2])
         routing_fee = 0.0
         dest = T[path[1]][1]
-        for edge in reversed(path[0]):
+        for edge in reversed(path[0]):      # fees are calculated recursive so we start with the final channel which has to forward only the final trans amount
             if edge[1] == dest:
                 fee_dict.update({(edge, path[1], path[2]): trans_amount})
             else:
                 routing_fee = (trans_amount * G.get_edge_data(edge[0], edge[1], key=edge[2])["routing_fee_prop"]) + G.get_edge_data(edge[0], edge[1], key=edge[2])["routing_fee_base"]
                 trans_amount = trans_amount + routing_fee
                 fee_dict.update({(edge, path[1], path[2]): trans_amount})
-        obj[index] = trans_amount - int(T[path[1]][2])
+        obj[index] = trans_amount - int(T[path[1]][2])  # the objective only stores the fees 
         index += 1
     return fee_dict, obj, index
 
@@ -95,10 +97,9 @@ def calc_vc_objective(G, obj, index):
     return obj, index
 
 def set_objective(P, T, G, number_of_VCs):
-    obj = np.empty(shape=(len(P)+number_of_VCs + number_of_VCs), dtype=float)
-    print("len of obj in utils: ", len(obj))
-    fee_dict, obj, index = calc_fee_objective(P, T, G, obj)
-    obj, index = calc_vc_objective(G, obj, index)
+    obj = np.empty(shape=(len(P)+number_of_VCs + number_of_VCs), dtype=float)   # obj vector is of fixed length as described in the paper
+    fee_dict, obj, index = calc_fee_objective(P, T, G, obj)                     # calculate fees (and stores for later usage) and sets first |P| objectives
+    obj, index = calc_vc_objective(G, obj, index)                               # sets the base and prop fee objectives
     return fee_dict, obj
 
 ####################################################################################
@@ -108,11 +109,11 @@ def set_objective(P, T, G, number_of_VCs):
 #   - checks for each transaction that it is routed only by one path
 def transaction_uniqueness(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator):
     t_index = 0
-    for t in T:
+    for t in T:                                                                 # |T| constraints
         col_path_iterator = 0
-        for path in P:
-            if path[1] == t_index:
-                val_dyn.append(-1)
+        for path in P:                                                          # path_tr variables 
+            if path[1] == t_index:                                              # of respected t are relevant
+                val_dyn.append(-1)                                              # and set to -1
                 row_dyn.append(row_cons_iterator)
                 col_dyn.append(col_path_iterator)
             col_path_iterator += 1
@@ -122,7 +123,7 @@ def transaction_uniqueness(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons
     return val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator
 
 # Transaction percentage (1 constraint)
-#   - checks that at least a specified percentage of transactions is routed (to avoid an empty obj vector)
+#   - checks that at least a specified percentage of transactions is routed (to avoid an empty obj vector as )
 def sum_of_T(T) -> float:
     sum = float(0)
     for t in T:
@@ -275,7 +276,6 @@ number_of_VCs = len(G.edges) - number_of_PCs
 P = read_paths(G, T, 2)                                     # finds all possible paths for every transaction using an nx function
 print(P)
 print("-----")
-prop_fee, base_fee = 0.01, 1                                            # sets prop and base fee (possible to be individually set later)
 c_tr, transaction_percentage = 1, 1                                     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
 #   needed vars for ILP operations:
 row_cons_iterator = 0                                                   # sets the currently respected constraint/ row in sparse matrix and in the rhs vector
