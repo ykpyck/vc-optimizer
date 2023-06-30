@@ -1,0 +1,6 @@
+Alice Bob 1000 1 0.01
+Bob Jim 1000 1 0.01
+Bob Michael 1000 1 0.01
+Jim Kelly 1000 1 0.01
+Michael Kelly 1000 1 0.01
+Kelly Ingrid 1000 1 0.01

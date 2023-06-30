@@ -51,16 +51,13 @@ def find_vc_edges(G, level=0):
 
 def read_paths(G, T, cutoff=None):
     P = []
+    tmp = []
     trans_id = 0
     for t in T:
         path_id = 0
         paths_t = nx.simple_paths.all_simple_edge_paths(G, t[0], t[1], cutoff=cutoff)
         for path in paths_t:
-            # calculate_fees (maybe keep it with the objective)
-            # recursive search third value of tuple is an id to get the specific edge 
-            # (maybe need to add even more data to graph dict but then it should be possible)
-            # pay attention to similar looking paths (will have one edge double) -> key! 
-            P.append((path, trans_id, path_id)) 
+            P.append((path, trans_id, path_id))
             path_id += 1
         trans_id += 1
     return P
@@ -226,9 +223,9 @@ def vc_existence(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator)
                     col_dyn.append(col_path_iterator)
                     paths_used += 1
                 col_path_iterator += 1
-            for vc_existence in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
-                if "intermediaries" in G.get_edge_data(vc_existence[0], vc_existence[1], key=vc_existence[2]):            # only VCs
-                    if vc == vc_existence:
+            for vc_existence_var in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
+                if "intermediaries" in G.get_edge_data(vc_existence_var[0], vc_existence_var[1], key=vc_existence_var[2]):            # only VCs
+                    if vc == vc_existence_var:
                         val_dyn.append(paths_used)
                         row_dyn.append(row_cons_iterator)                                   
                         col_dyn.append(col_path_iterator)
@@ -268,13 +265,20 @@ def vc_capacity(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator, 
 '''
 G = read_network("tests/test1-graph.txt")                # load network from a list of edges with respective capacity, base fee, and routing fee
 number_of_PCs = len(G.edges)
-print(G.edges)
+#print(G.edges)
 T = read_transactions("tests/test1-transactions.txt")    # loads transaction as tuples like: tuple(start, dest, amount)
-level = 3
+level = 5
 G = find_vc_edges(G, level)                              # finds and adds all VCs for specified level to G
 number_of_VCs = len(G.edges) - number_of_PCs
-P = read_paths(G, T, 2)                                     # finds all possible paths for every transaction using an nx function
-print(P)
+P, VCs = read_paths(G, T, 3)                                     # finds all possible paths for every transaction using an nx function
+print(G)
+for p in P:
+    print(p)
+#for vc in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
+#    if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
+#        print(vc)
+print(VCs)
+
 print("-----")
 c_tr, transaction_percentage = 1, 1                                     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
 #   needed vars for ILP operations:
