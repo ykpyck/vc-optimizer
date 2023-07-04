@@ -10,14 +10,13 @@ import fullILPUtils
 import time
 
 try:
-    tests = [("tests/test1-graph.txt", "tests/test2-transactions.txt"), 
-             ("tests/test2-graph.txt", "tests/test2-transactions.txt"),
-             ("tests/paper-graph.txt", "tests/paper-transactions.txt")]
-    levels = [-1, 0, 1, 2]
+    tests = [("tests/paper-graph.txt", "tests/paper-transactions.txt"),
+             ("tests/test1-graph.txt", "tests/test1-transactions.txt")]
+    levels = [-1, 0, 1]
     c_tr, transaction_percentage = 1, 1     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
-    cutoff = 7                             # cutoff might be usefull to be set so solutionspace is limited
-    graph_input = tests[1][0]
-    transaction_input = tests[1][1]
+    cutoff = 100                             # cutoff might be usefull to be set so solutionspace is limited
+    graph_input = tests[0][0]
+    transaction_input = tests[0][1]
     results = []
     for level in levels:
         start_time = time.perf_counter()
@@ -48,7 +47,7 @@ try:
         rhs_dyn = []
         #print("Build model...")
         print(f"Level {level} creates {number_of_VCs} possible VCs and {len(P)} possible paths.")
-        '''
+
         # Create a new model
         m = gp.Model("Ilp")
 
@@ -65,7 +64,7 @@ try:
         #   loop over transactions  -> checks that transactions are uniquely successful
         #       constraint          -> per row all paths of relevant transactions 
         #       rhs                 -> element of {0,1}
-        val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = fullILPUtils.transaction_uniqueness(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator)
+        val_uniq, row_uniq, col_uniq, rhs_uniq = fullILPUtils.transaction_uniqueness(G, T, P)
         
         #   + 1                     -> percentage of successful transaction amounts
         #       constraint          -> all trans_amounts
@@ -73,42 +72,53 @@ try:
         #   *                       -> percentage of successful transactions
         #       constraint          -> all paths
         #       rhs                 -> c_tr times number of transactions
-        val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = fullILPUtils.transaction_constraint(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator, c_tr, transaction_percentage)
+        val_suc, row_suc, col_suc, rhs_suc = fullILPUtils.transaction_constraint(G, T, P, len(T), c_tr, transaction_percentage)
         print("... transaction constraints set ...")
+
         #   loop over channels      -> checks capacity of all channels
         #       constraint matrix   -> per row relevant routing_fees and trans_amounts will be added 
         #       rhs vector          -> respective channel capacity
-        val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = fullILPUtils.capacity_constraints(G, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator, fee_dict)
+        val_cap, row_cap, col_cap, rhs_cap = fullILPUtils.capacity_constraints(G, P, len(T)+1, fee_dict)
         print("... capacity constraints set ...")
+
         #   loop over VCs to check for active paths
         #       constraint          -> checks that if a path is used the respective VCs are active as well
         #       rhs                 -> 
-        val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = fullILPUtils.vc_existence(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator)
+        val_vce, row_vce, col_vce, rhs_vce = fullILPUtils.vc_existence(G, T, P, len(T)+number_of_PCs+1)
         print("... vc existence constraints set ...")
+
         #   loop over VCs to check for active paths
         #       constraint          -> checks that if a path is used the respective VCs are active as well
         #       rhs                 -> 
-        val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = fullILPUtils.vc_capacity(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator, number_of_VCs, fee_dict)
+        val_vcc, row_vcc, col_vcc, rhs_vcc = fullILPUtils.vc_capacity(G, T, P, len(T)+number_of_PCs+number_of_VCs+1, number_of_VCs, fee_dict)
         print("... vc capacity constraints set, all constraints set.")
+        
+        # collect and combine
+        val = np.concatenate((np.array(val_uniq), np.array(val_suc), np.array(val_cap), np.array(val_vce), np.array(val_vcc)))
+        row = np.concatenate((np.array(row_uniq), np.array(row_suc), np.array(row_cap), np.array(row_vce), np.array(row_vcc)))
+        col = np.concatenate((np.array(col_uniq), np.array(col_suc), np.array(col_cap), np.array(col_vce), np.array(col_vcc)))
+        rhs = np.concatenate((np.array(rhs_uniq), np.array(rhs_suc), np.array(rhs_cap), np.array(rhs_vce), np.array(rhs_vcc)))
         # build A sparse matrix
-        A = sp.csr_matrix((np.array(val_dyn), (np.array(row_dyn), np.array(col_dyn))), shape=(len(rhs_dyn), len(P)+(2*number_of_VCs)))
+        A = sp.csr_matrix((val, (row, col)), shape=(len(rhs), len(P)+(2*number_of_VCs)))
         print("Sparse matrix built.")
         # Add constraints
-        m.addConstr(A @ x >= np.array(rhs_dyn), name="c")
+        m.addConstr(A @ x >= rhs, name="c")
 
         # Optimize model
         m.optimize()
 
         end_time = time.perf_counter()
         execution_time = end_time - start_time
-        print("Execution finished in", execution_time, "seconds.")
-        results.append((m, x, execution_time))
+        print(f"Execution finished in {execution_time} seconds.")
+        results.append((m, x, execution_time, len(P)))
 
     for result in results:      # Display output 
         print(result[1].X)
-        print('Obj: %g' % result[0].ObjVal)
-        print("Time taken: ", result[2])
-    '''
+        print(f'Obj: {result[0].ObjVal}')
+        print(f"Time taken: {result[2]}")
+        print(f"Number of paths: {result[3]}")
+
+    ##'''
     #plt.subplot(3, int(len(P)/3), 1)
     #nx.drawing.nx_pylab.draw(G, with_labels=True)
     #index = 0

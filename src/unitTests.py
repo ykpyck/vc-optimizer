@@ -1,36 +1,39 @@
 import unittest
-import baselineIlpUtils
-import caseL0IlpUtils
+import fullILPUtils
 import networkx as nx
 import numpy as np
 
-class TestTransactionUniqueness(unittest.TestCase):
-    def test_transaction_uniqueness(self):
-        T = [('0', '3', '100'), 
-             ('0', '3', '100'),
-             ('0', '3', '100'),
-             ('0', '3', '100'),
-             ('0', '3', '100')]
-        P = [(['0', '1', '2', '4', '3'], 0, 0), 
-             (['0', '1', '2', '4', '3'], 0, 0), 
-             (['0', '1', '2', '4', '3'], 0, 0), 
-             (['0', '1', '2', '4', '3'], 1, 0)]
-        val_dyn = []
-        row_dyn = []
-        col_dyn = []
-        row_cons_iterator = 0
-        rhs = [0, 0, 0, 0, 0]
+graph_input = "tests/test1-graph.txt"
+transaction_input = "tests/test1-transactions.txt"
 
-        result = baselineIlpUtils.transaction_uniqueness(T, P, val_dyn, row_dyn, col_dyn, row_cons_iterator, rhs)
+class TestReadPaths(unittest.TestCase):
+    def test_read_paths(self):
+        G = fullILPUtils.read_network(graph_input)  # load network from a list of edges with respective capacity, base fee, and routing fee
+        number_of_PCs = len(G.edges)
+        T = fullILPUtils.read_transactions(transaction_input)  # loads transaction as tuples like: tuple(start, dest, amount)
+        G = fullILPUtils.find_vc_edges(G, 5)            # finds and adds all VCs for specified level to G
+        P = fullILPUtils.read_paths(G, T, 3)
 
-        # expected: 
-        expected_val_dyn = [-1, -1, -1, -1]
-        expected_row_dyn = [0, 0, 0, 1]
-        expected_col_dyn = [0, 1, 2, 3]
-        expected_row_cons_iterator = 5
-        expected_rhs = [-1, -1, -1, -1, -1]
-
-        self.assertEqual(result, (expected_val_dyn, expected_row_dyn, expected_col_dyn, expected_row_cons_iterator, expected_rhs))
+        expected_P = [([('r', 't', 0), ('t', 'a', 0), ('a', 'z', 0)], 0, 0), 
+                      ([('r', 't', 0), ('t', 'm', 0), ('m', 'z', 0)], 0, 1), 
+                      ([('r', 't', 0), ('t', 'm', 1), ('m', 'z', 0)], 0, 2), 
+                      ([('r', 't', 0), ('t', 'z', 0)], 0, 3), 
+                      ([('r', 'm', 0), ('m', 'a', 0), ('a', 'z', 0)], 0, 4), 
+                      ([('r', 'm', 0), ('m', 't', 0), ('t', 'z', 0)], 0, 5), 
+                      ([('r', 'm', 0), ('m', 't', 1), ('t', 'z', 0)], 0, 6), 
+                      ([('r', 'm', 0), ('m', 'z', 0)], 0, 7), 
+                      ([('r', 'a', 0), ('a', 't', 0), ('t', 'z', 0)], 0, 8), 
+                      ([('r', 'a', 0), ('a', 'm', 0), ('m', 'z', 0)], 0, 9), 
+                      ([('r', 'a', 0), ('a', 'z', 0)], 0, 10), 
+                      ([('r', 'a', 1), ('a', 't', 0), ('t', 'z', 0)], 0, 11), 
+                      ([('r', 'a', 1), ('a', 'm', 0), ('m', 'z', 0)], 0, 12), 
+                      ([('r', 'a', 1), ('a', 'z', 0)], 0, 13), 
+                      ([('r', 'z', 0)], 0, 14), 
+                      ([('r', 'z', 1)], 0, 15), 
+                      ([('r', 'z', 2)], 0, 16), 
+                      ([('r', 'z', 3)], 0, 17)]
+        
+        self.assertEqual(P, expected_P)
 
 
 if __name__ == '__main__':

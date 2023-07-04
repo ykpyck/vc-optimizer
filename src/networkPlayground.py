@@ -7,7 +7,25 @@ import fullILPUtils
 import string
 import numpy as np
 
-levels = [-1, 0, 1, 2]
+samples = [("tests/paper-graph.txt", "tests/paper-transactions.txt"),
+           ("tests/test1-graph.txt", "tests/test1-transactions.txt"), 
+           ("tests/test2-graph.txt", "tests/test2-transactions.txt"),
+           ("tests/test3-graph.txt", "tests/test3-transactions.txt"),
+           ("tests/test4-graph.txt", "tests/test4-transactions.txt"),
+           ("tests/test5-graph.txt", "tests/test5-transactions.txt"),]
+
+graph_input = samples[0][0]
+transaction_input = samples[0][1]
+
+G = fullILPUtils.read_network(graph_input)  
+
+#G = fullILPUtils.find_vc_edges(G, 0)
+
+for edge in G.edges:
+    print(edge)
+
+'''
+levels = [-1, 0, 1]
 results = np.empty((6, len(levels)))
 graph_info = []
 
@@ -18,7 +36,7 @@ samples = [("tests/paper-graph.txt", "tests/paper-transactions.txt"),
            ("tests/test4-graph.txt", "tests/test4-transactions.txt"),
            ("tests/test5-graph.txt", "tests/test5-transactions.txt"),]
 sample_index = 0
-for sample in samples:
+for sample in samples[:2]:
     G_base = fullILPUtils.read_network(sample[0])
     T = fullILPUtils.read_transactions(sample[1])
     number_of_PCs = len(G_base.edges)
@@ -30,7 +48,7 @@ for sample in samples:
     cutoff = len_shortest_path
     graph_info.append((len(G_base.nodes), len(G_base.edges)))
     for level in levels:
-        if sample_index <= 1 or (sample_index > 1 and level < 1) or (sample_index <= 3 and level < 2):
+        if sample_index <= 1 or (sample_index > 1 and level < 1):
             if level >= 0:
                 G = fullILPUtils.find_vc_edges(G_base, level)            # finds and adds all VCs for specified level to G
                 number_of_VCs = len(G.edges) - number_of_PCs
@@ -38,7 +56,7 @@ for sample in samples:
                 G = G_base
                 number_of_VCs = 0
             P = fullILPUtils.read_paths(G, T, cutoff)               # finds all possible paths for every transaction using an nx function
-            #print(f"{sample[0]}: Level: {level} VCs: {number_of_VCs} ") #Paths: {len(P)}
+            print(f"{sample[0]}: Level: {level} VCs: {number_of_VCs} ") #Paths: {len(P)}
             results[sample_index, level+1] = len(P) # , len(P)
             #pos = nx.spring_layout(G, seed=42)
             #nx.draw(G, pos, with_labels=True, node_color='lightgray', node_size=650, font_size=7, edge_color="red", width=1.5)
@@ -53,10 +71,10 @@ fig, ax = plt.subplots()
 
 ax.plot(x, results[0], label=f"G{graph_info[0]}")
 ax.plot(x, results[1], label=f"G{graph_info[1]}")
-ax.plot(x[:2], results[2][:3], label=f"G{graph_info[2]}")
-ax.plot(x[:2], results[3][:3], label=f"G{graph_info[3]}")
-ax.plot(x[:2], results[4][:2], label=f"G{graph_info[4]}")
-ax.plot(x[:2], results[5][:2], label=f"G{graph_info[5]}")
+#ax.plot(x[:2], results[2][:2], label=f"G{graph_info[2]}")
+#ax.plot(x[:2], results[3][:2], label=f"G{graph_info[3]}")
+#ax.plot(x[:2], results[4][:2], label=f"G{graph_info[4]}")
+#ax.plot(x[:2], results[5][:2], label=f"G{graph_info[5]}")
 
 xticks = range(0, len(x))
 ax.set_xticks(xticks)
@@ -87,7 +105,7 @@ print("-------")
 for result in results[5][:2]:
     print(result)
 
-'''
+
 c_tr = 1
 tests = [("tests/test1-graph.txt", "tests/test2-transactions.txt"), 
          ("tests/test2-graph.txt", "tests/test2-transactions.txt"),
