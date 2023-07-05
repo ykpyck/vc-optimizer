@@ -291,6 +291,22 @@ def vc_capacity(G, T, P, row_cons_iterator, number_of_VCs, fee_dict):
             row_cons_iterator += 1
     return val, row, col, rhs
 
+def adversaries(G, P, adversary_nodes, row_cons_iterator):
+    val = []
+    row = []
+    col = []
+    rhs = []
+    col_path_iterator = len(P)
+    for adversary in adversary_nodes:
+        for vc in G.edges:                                                       # now iterate over VCs
+            if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):     # only VCs
+                if adversary in G.get_edge_data(vc[0], vc[1], key=vc[2])["intermediaries"]:
+                    val.append(1)
+                    row.append(row_cons_iterator)                                   
+                    col.append(col_path_iterator)
+                col_path_iterator += 1
+    return val, row, col, rhs
+
 
 
 #####################
