@@ -62,7 +62,7 @@ if __name__ == '__main__':
             #   loop over transactions  -> checks that transactions are uniquely successful
             #       constraint          -> per row all paths of relevant transactions 
             #       rhs                 -> element of {0,1}
-            uniq_result = pool.starmap(fullILPUtils.transaction_uniqueness, [(G, T, P)])
+            uniq_result = pool.starmap_async(fullILPUtils.transaction_uniqueness, [(G, T, P)])
             #val_uniq, row_uniq, col_uniq, rhs_uniq = fullILPUtils.transaction_uniqueness(G, T, P)
 
             #   + 1                     -> percentage of successful transaction amounts
@@ -71,42 +71,42 @@ if __name__ == '__main__':
             #   *                       -> percentage of successful transactions
             #       constraint          -> all paths
             #       rhs                 -> c_tr times number of transactions
-            trans_result = pool.starmap(fullILPUtils.transaction_constraint, [(G, T, P, len(T), c_tr, transaction_percentage)])
+            trans_result = pool.starmap_async(fullILPUtils.transaction_constraint, [(G, T, P, len(T), c_tr, transaction_percentage)])
             #val_suc, row_suc, col_suc, rhs_suc = fullILPUtils.transaction_constraint(G, T, P, len(T), c_tr, transaction_percentage)
-            print("... transaction constraints set ...")
+            #print("... transaction constraints set ...")
 
             #   loop over channels      -> checks capacity of all channels
             #       constraint matrix   -> per row relevant routing_fees and trans_amounts will be added 
             #       rhs vector          -> respective channel capacity
-            cap_result = pool.starmap(fullILPUtils.capacity_constraints, [(G, P, len(T)+1, fee_dict)])
+            cap_result = pool.starmap_async(fullILPUtils.capacity_constraints, [(G, P, len(T)+1, fee_dict)])
             #val_cap, row_cap, col_cap, rhs_cap = fullILPUtils.capacity_constraints(G, P, len(T)+1, fee_dict)
-            print("... capacity constraints set ...")
+            #print("... capacity constraints set ...")
 
             #   loop over VCs to check for active paths
             #       constraint          -> checks that if a path is used the respective VCs are active as well
             #       rhs                 -> 
-            vcexist_result = pool.starmap(fullILPUtils.vc_existence, [(G, T, P, len(T)+number_of_PCs+1)])
+            vcexist_result = pool.starmap_async(fullILPUtils.vc_existence, [(G, T, P, len(T)+number_of_PCs+1)])
             #val_vce, row_vce, col_vce, rhs_vce = fullILPUtils.vc_existence(G, T, P, len(T)+number_of_PCs+1)
-            print("... vc existence constraints set ...")
+            #print("... vc existence constraints set ...")
 
             #   loop over VCs to check for active paths
             #       constraint          -> checks that if a path is used the respective VCs are active as well
             #       rhs                 -> 
-            vccap_result = pool.starmap(fullILPUtils.vc_capacity, [(G, T, P, len(T)+number_of_PCs+number_of_VCs+1, number_of_VCs, fee_dict)])
+            vccap_result = pool.starmap_async(fullILPUtils.vc_capacity, [(G, T, P, len(T)+number_of_PCs+number_of_VCs+1, number_of_VCs, fee_dict)])
             #val_vcc, row_vcc, col_vcc, rhs_vcc = fullILPUtils.vc_capacity(G, T, P, len(T)+number_of_PCs+number_of_VCs+1, number_of_VCs, fee_dict)
-            print("... vc capacity constraints set, all constraints set.")
+            #print("... vc capacity constraints set, all constraints set.")
 
             #val_adv, row_adv, col_adv, rhs_adv = fullILPUtils.adversaries(G, P, adversary_nodes, len(T)+number_of_PCs+number_of_VCs+number_of_VCs+1)
 
             # collect and combine
             pool.close()
             pool.join()
-            
-            val_uniq, row_uniq, col_uniq, rhs_uniq = uniq_result[0]
-            val_suc, row_suc, col_suc, rhs_suc = trans_result[0]
-            val_cap, row_cap, col_cap, rhs_cap = cap_result[0]
-            val_vce, row_vce, col_vce, rhs_vce = vcexist_result[0]
-            val_vcc, row_vcc, col_vcc, rhs_vcc = vccap_result[0]
+
+            val_uniq, row_uniq, col_uniq, rhs_uniq = uniq_result.get()[0]
+            val_suc, row_suc, col_suc, rhs_suc = trans_result.get()[0]
+            val_cap, row_cap, col_cap, rhs_cap = cap_result.get()[0]
+            val_vce, row_vce, col_vce, rhs_vce = vcexist_result.get()[0]
+            val_vcc, row_vcc, col_vcc, rhs_vcc = vccap_result.get()[0]
             val = np.concatenate((np.array(val_uniq), np.array(val_suc), np.array(val_cap), np.array(val_vce), np.array(val_vcc)))
             row = np.concatenate((np.array(row_uniq), np.array(row_suc), np.array(row_cap), np.array(row_vce), np.array(row_vcc)))
             col = np.concatenate((np.array(col_uniq), np.array(col_suc), np.array(col_cap), np.array(col_vce), np.array(col_vcc)))
@@ -123,13 +123,14 @@ if __name__ == '__main__':
             end_time = time.perf_counter()
             execution_time = end_time - start_time
             print(f"Execution finished in {execution_time} seconds.")
-            results.append((m, x, execution_time, len(P)))
+            results.append((m, x, execution_time, len(P), level, number_of_VCs, number_of_PCs, len(G.nodes)))
 
         for result in results:      # Display output 
             #print(result[1].X)
-            print(f'Obj: {result[0].ObjVal}')
-            print(f"Time taken: {result[2]}")
-            print(f"Number of paths: {result[3]}")
+            print(f"G({result[-1]}, {result[-2]}) on level {result[4]} pot. Paths: {result[3]} pot. VCs: {result[5]} Obj.: {result[0].objVal} Time: {result[2]}")
+            #print(f'Obj: {result[0].ObjVal}')
+            #print(f"Time taken: {result[2]}")
+            #print(f"Number of paths: {result[3]}")
 
     except gp.GurobiError as e:
         print('Error code ' + str(e.errno) + ": " + str(e))
