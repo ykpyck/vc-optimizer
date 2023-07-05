@@ -13,9 +13,13 @@ import multiprocessing as mp
 if __name__ == '__main__':
     try:
         tests = [("tests/paper-graph.txt", "tests/paper-transactions.txt"),
-                 ("tests/test1-graph.txt", "tests/test1-transactions.txt")]
-        adversary_nodes = []
-        levels = [-1, 0, 1, 2]
+                 ("tests/test1-graph.txt", "tests/test1-transactions.txt"), 
+                 ("tests/test2-graph.txt", "tests/test2-transactions.txt"),
+                 ("tests/test3-graph.txt", "tests/test3-transactions.txt"),
+                 ("tests/test4-graph.txt", "tests/test4-transactions.txt"),
+                 ("tests/test5-graph.txt", "tests/test5-transactions.txt"),]
+        adversary_nodes = ['a']
+        levels = [-1, 0, 1]
         c_tr, transaction_percentage = 1, 1     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
         cutoff = 100                             # cutoff might be usefull to be set so solutionspace is limited
         graph_input = tests[1][0]
@@ -31,7 +35,7 @@ if __name__ == '__main__':
                 tmp = nx.shortest_path_length(G, t[0], t[1])
                 if tmp > len_shortest_path:
                     len_shortest_path = tmp
-            cutoff = len_shortest_path
+            cutoff = len_shortest_path + 1
             if level >= 0:
                 #print("Search for possible VCs ...")
                 G = fullILPUtils.find_vc_edges(G, level)            # finds and adds all VCs for specified level to G
@@ -96,6 +100,7 @@ if __name__ == '__main__':
             #val_vcc, row_vcc, col_vcc, rhs_vcc = fullILPUtils.vc_capacity(G, T, P, len(T)+number_of_PCs+number_of_VCs+1, number_of_VCs, fee_dict)
             #print("... vc capacity constraints set, all constraints set.")
 
+            adv_result = pool.starmap_async(fullILPUtils.adversaries, [(G, P, adversary_nodes, len(T)+number_of_PCs+number_of_VCs+number_of_VCs+1)])
             #val_adv, row_adv, col_adv, rhs_adv = fullILPUtils.adversaries(G, P, adversary_nodes, len(T)+number_of_PCs+number_of_VCs+number_of_VCs+1)
 
             # collect and combine
@@ -107,10 +112,12 @@ if __name__ == '__main__':
             val_cap, row_cap, col_cap, rhs_cap = cap_result.get()[0]
             val_vce, row_vce, col_vce, rhs_vce = vcexist_result.get()[0]
             val_vcc, row_vcc, col_vcc, rhs_vcc = vccap_result.get()[0]
-            val = np.concatenate((np.array(val_uniq), np.array(val_suc), np.array(val_cap), np.array(val_vce), np.array(val_vcc)))
-            row = np.concatenate((np.array(row_uniq), np.array(row_suc), np.array(row_cap), np.array(row_vce), np.array(row_vcc)))
-            col = np.concatenate((np.array(col_uniq), np.array(col_suc), np.array(col_cap), np.array(col_vce), np.array(col_vcc)))
-            rhs = np.concatenate((np.array(rhs_uniq), np.array(rhs_suc), np.array(rhs_cap), np.array(rhs_vce), np.array(rhs_vcc)))
+            val_adv, row_adv, col_adv, rhs_adv = adv_result.get()[0]
+
+            val = np.concatenate((np.array(val_uniq), np.array(val_suc), np.array(val_cap), np.array(val_vce), np.array(val_vcc), np.array(val_vcc)))
+            row = np.concatenate((np.array(row_uniq), np.array(row_suc), np.array(row_cap), np.array(row_vce), np.array(row_vcc), np.array(row_vcc)))
+            col = np.concatenate((np.array(col_uniq), np.array(col_suc), np.array(col_cap), np.array(col_vce), np.array(col_vcc), np.array(col_vcc)))
+            rhs = np.concatenate((np.array(rhs_uniq), np.array(rhs_suc), np.array(rhs_cap), np.array(rhs_vce), np.array(rhs_vcc), np.array(rhs_vcc)))
             # build A sparse matrix
             A = sp.csr_matrix((val, (row, col)), shape=(len(rhs), len(P)+(2*number_of_VCs)))
             print("Sparse matrix built.")

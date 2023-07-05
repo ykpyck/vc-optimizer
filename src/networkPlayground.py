@@ -105,7 +105,7 @@ print("-------")
 for result in results[5][:2]:
     print(result)
 
-
+'''
 c_tr = 1
 tests = [("tests/test1-graph.txt", "tests/test2-transactions.txt"), 
          ("tests/test2-graph.txt", "tests/test2-transactions.txt"),
@@ -126,7 +126,7 @@ edge_colors = ['red' if edge in highlighted_path else 'gray' for edge in G.edges
 edge_width = [2.0 if edge in highlighted_path else 1.0 for edge in G.edges]
 
 # Draw the graph
-nx.draw(G, pos, with_labels=False, node_color='lightgray', node_size=650, font_size=7, edge_color="red", width=edge_width)
+nx.draw(G, pos, with_labels=True, node_color='lightgray', node_size=650, font_size=7, edge_color="red", width=edge_width)
 
 # Add edge labels
 edge_labels = nx.get_edge_attributes(G, 'weight')
@@ -134,4 +134,4 @@ nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
 
 # Display the graph
 plt.show()
-'''
+#'''

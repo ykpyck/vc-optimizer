@@ -305,6 +305,7 @@ def adversaries(G, P, adversary_nodes, row_cons_iterator):
                     row.append(row_cons_iterator)                                   
                     col.append(col_path_iterator)
                 col_path_iterator += 1
+        rhs.append(1)
     return val, row, col, rhs
 
 
