@@ -22,21 +22,21 @@ if __name__ == '__main__':
         adversary_nodes = ['a']
         levels = [-1, 0, 1]
         c_tr, transaction_percentage = 1, 1     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
-        cutoff = 100                             # cutoff might be usefull to be set so solutionspace is limited
-        graph_input = tests[0][0]
-        transaction_input = tests[0][1]
+        cutoff = None                             # cutoff might be usefull to be set so solutionspace is limited
+        graph_input = tests[1][0]
+        transaction_input = tests[1][1]
         results = []
         for level in levels:
             start_time = time.perf_counter()
             G = fullILPUtils.read_network(graph_input)  # load network from a list of edges with respective capacity, base fee, and routing fee
             number_of_PCs = len(G.edges)
             T = fullILPUtils.read_transactions(transaction_input)  # loads transaction as tuples like: tuple(start, dest, amount)
-            len_shortest_path = 0
-            for t in T:
-                tmp = nx.shortest_path_length(G, t[0], t[1])
-                if tmp > len_shortest_path:
-                    len_shortest_path = tmp
-            cutoff = len_shortest_path + 1
+            #len_shortest_path = 0
+            #for t in T:
+            #    tmp = nx.shortest_path_length(G, t[0], t[1])
+            #    if tmp > len_shortest_path:
+            #        len_shortest_path = tmp
+            #cutoff = len_shortest_path + 1
             if level >= 0:
                 #print("Search for possible VCs ...")
                 G = fullILPUtils.find_vc_edges(G, level)            # finds and adds all VCs for specified level to G
