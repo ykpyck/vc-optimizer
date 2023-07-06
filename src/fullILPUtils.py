@@ -175,37 +175,34 @@ def edge_part_of_vc(G, edge, vc):
             return True
     return False
 
-def capacity_constraints(G, P, row_cons_iterator, fee_dict):
+def capacity_constraints(G, P, row_cons_iterator, fee_dict, edge):
     val = []
     row = []
     col = []
     rhs = []
-    for edge in G.edges:                                                                # iteration over all edges (constraints)
-        if not("intermediaries" in G.get_edge_data(edge[0], edge[1], key=edge[2])):     # but only over "real" edges
-            col_path_iterator = 0
-            for path in P:                                                              # iteration over the paths (variables)
-                trans_amount = edge_in_path(G, edge, path, fee_dict)
-                if trans_amount != None:
-                    val.append(-trans_amount)
-                    row.append(row_cons_iterator)                                   
-                    col.append(col_path_iterator)
-                col_path_iterator += 1
-            for vc in G.edges:                                                              # now iterate over VCs
-                if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
-                    if edge_part_of_vc(G, edge, vc):
-                        val.append(-G.get_edge_data(vc[0], vc[1], key=vc[2])["routing_fee_base"])
-                        row.append(row_cons_iterator)                                   
-                        col.append(col_path_iterator)
-                    col_path_iterator += 1
-            for vc in G.edges:                                                              # now iterate over VCs
-                if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
-                    if edge_part_of_vc(G, edge, vc):
-                        val.append(-G.get_edge_data(vc[0], vc[1], key=vc[2])["routing_fee_prop"])
-                        row.append(row_cons_iterator)                                   
-                        col.append(col_path_iterator)
-                    col_path_iterator += 1
-            rhs.append(-G.edges[edge]["capacity"])
-            row_cons_iterator += 1
+    col_path_iterator = 0
+    for path in P:                                                              # iteration over the paths (variables)
+        trans_amount = edge_in_path(G, edge, path, fee_dict)
+        if trans_amount != None:
+            val.append(-trans_amount)
+            row.append(row_cons_iterator)                                   
+            col.append(col_path_iterator)
+        col_path_iterator += 1
+    for vc in G.edges:                                                              # now iterate over VCs
+        if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
+            if edge_part_of_vc(G, edge, vc):
+                val.append(-G.get_edge_data(vc[0], vc[1], key=vc[2])["routing_fee_base"])
+                row.append(row_cons_iterator)                                   
+                col.append(col_path_iterator)
+            col_path_iterator += 1
+    for vc in G.edges:                                                              # now iterate over VCs
+        if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
+            if edge_part_of_vc(G, edge, vc):
+                val.append(-G.get_edge_data(vc[0], vc[1], key=vc[2])["routing_fee_prop"])
+                row.append(row_cons_iterator)                                   
+                col.append(col_path_iterator)
+            col_path_iterator += 1
+    rhs.append(-G.edges[edge]["capacity"])
     return val, row, col, rhs
 
 
@@ -222,31 +219,28 @@ def vc_part_of_path(G, vc, paths):
                     return True
     return False
 
-def vc_existence(G, T, P, row_cons_iterator):
+def vc_existence(G, P, vc, row_cons_iterator):
     val = []
     row = []
     col = []
     rhs = []
-    for vc in G.edges:                                                              # iterate over VCs
-        if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
-            col_path_iterator = 0
-            paths_used = 0
-            for path in P:
-                if vc_part_of_path(G, vc, path[0]):
-                    val.append(-1)
-                    row.append(row_cons_iterator)                                   
-                    col.append(col_path_iterator)
-                    paths_used += 1
-                col_path_iterator += 1
-            for vc_existence_var in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
-                if "intermediaries" in G.get_edge_data(vc_existence_var[0], vc_existence_var[1], key=vc_existence_var[2]):            # only VCs
-                    if vc == vc_existence_var:
-                        val.append(paths_used)
-                        row.append(row_cons_iterator)                                   
-                        col.append(col_path_iterator)
-                    col_path_iterator += 1
-            rhs.append(0)
-            row_cons_iterator += 1
+    col_path_iterator = 0
+    paths_used = 0
+    for path in P:
+        if vc_part_of_path(G, vc, path[0]):
+            val.append(-1)
+            row.append(row_cons_iterator)                                   
+            col.append(col_path_iterator)
+            paths_used += 1
+        col_path_iterator += 1
+    for vc_existence_var in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
+        if "intermediaries" in G.get_edge_data(vc_existence_var[0], vc_existence_var[1], key=vc_existence_var[2]):            # only VCs
+            if vc == vc_existence_var:
+                val.append(paths_used)
+                row.append(row_cons_iterator)                                   
+                col.append(col_path_iterator)
+            col_path_iterator += 1
+    rhs.append(0)
     return val, row, col, rhs
 
 def vc_in_path(G, vc, path, fee_dict):
@@ -262,33 +256,30 @@ def vc_in_path(G, vc, path, fee_dict):
                     return trans_amount
     return trans_amount
 
-def vc_capacity(G, T, P, row_cons_iterator, number_of_VCs, fee_dict):
+def vc_capacity(G, P, vc, row_cons_iterator, number_of_VCs, fee_dict):
     val = []
     row = []
     col = []
     rhs = []
-    for vc in G.edges:                                                              # iterate over VCs
-        if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
-            col_path_iterator = 0
-            paths_used = 0
-            for path in P:
-                trans_amount = vc_in_path(G, vc, path, fee_dict)
-                if trans_amount != None:
-                    val.append(-trans_amount)
-                    row.append(row_cons_iterator)                                   
-                    col.append(col_path_iterator)
-                    paths_used += 1
-                col_path_iterator += 1
-            col_path_iterator += number_of_VCs
-            for vc_capacity in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
-                if "intermediaries" in G.get_edge_data(vc_capacity[0], vc_capacity[1], key=vc_capacity[2]):            # only VCs
-                    if vc == vc_capacity:
-                        val.append(1)
-                        row.append(row_cons_iterator)                                   
-                        col.append(col_path_iterator)
-                    col_path_iterator += 1
-            rhs.append(0)
-            row_cons_iterator += 1
+    col_path_iterator = 0
+    paths_used = 0
+    for path in P:
+        trans_amount = vc_in_path(G, vc, path, fee_dict)
+        if trans_amount != None:
+            val.append(-trans_amount)
+            row.append(row_cons_iterator)                                   
+            col.append(col_path_iterator)
+            paths_used += 1
+        col_path_iterator += 1
+    col_path_iterator += number_of_VCs
+    for vc_capacity in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
+        if "intermediaries" in G.get_edge_data(vc_capacity[0], vc_capacity[1], key=vc_capacity[2]):            # only VCs
+            if vc == vc_capacity:
+                val.append(1)
+                row.append(row_cons_iterator)                                   
+                col.append(col_path_iterator)
+            col_path_iterator += 1
+    rhs.append(0)
     return val, row, col, rhs
 
 def adversaries(G, P, adversary_nodes, row_cons_iterator):
