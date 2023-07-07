@@ -11,6 +11,10 @@ import time
 import multiprocessing as mp
 import logging
 
+def process_wrapper(G, P, row_cons_iter, fee_dict, edge, output_queue):
+    output_arrays = fullILPUtils.capacity_constraints(G, P, row_cons_iter, fee_dict, edge)
+    output_queue.put(output_arrays)
+
 if __name__ == '__main__':
     try:
         tests = [("tests/paper-graph.txt", "tests/paper-transactions.txt"),
@@ -20,7 +24,7 @@ if __name__ == '__main__':
                  ("tests/test4-graph.txt", "tests/test4-transactions.txt"),
                  ("tests/test5-graph.txt", "tests/test5-transactions.txt"),]
         adversary_nodes = ['a']
-        levels = [-1, 0, 1]
+        levels = [-1, 0]
         c_tr, transaction_percentage = 1, 1     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
         cutoff = None                             # cutoff might be usefull to be set so solutionspace is limited
         graph_input = tests[1][0]
@@ -85,6 +89,8 @@ if __name__ == '__main__':
             #       rhs vector          -> respective channel capacity
             #cap_result = pool.starmap_async(fullILPUtils.capacity_constraints, [(G, P, len(T)+1, fee_dict)])
             #val_cap, row_cap, col_cap, rhs_cap = fullILPUtils.capacity_constraints(G, P, len(T)+1, fee_dict)
+            output_queue = mp.Queue()
+            pool = mp.Pool(processes=2)
             val_cap = []
             row_cap = []
             col_cap = []
@@ -92,12 +98,28 @@ if __name__ == '__main__':
             row_cons_iter = len(T)+1
             for edge in G.edges:
                 if not("intermediaries" in G.get_edge_data(edge[0], edge[1], key=edge[2])):     # but only over "real" edges
-                    val, row, col, rhs = fullILPUtils.capacity_constraints(G, P, row_cons_iter, fee_dict, edge)
-                    val_cap.extend(val)
-                    row_cap.extend(row)
-                    col_cap.extend(col)
-                    rhs_cap.extend(rhs)
+                    pool.map_async(process_wrapper, [G, P, row_cons_iter, fee_dict, edge, output_queue])
+                    #val, row, col, rhs = fullILPUtils.capacity_constraints(G, P, row_cons_iter, fee_dict, edge)
+                    #val_cap.extend(val)
+                    #row_cap.extend(row)
+                    #col_cap.extend(col)
+                    #rhs_cap.extend(rhs)
                     row_cons_iter += 1
+            pool.close()
+            pool.join()
+            output_arrays_all = []
+
+            while not output_queue.empty():
+                output_arrays_all.append(output_queue.get())
+            print(output_arrays_all)
+            val_output = [output_arrays[0] for output_arrays in output_arrays_all]
+            row_output = [output_arrays[1] for output_arrays in output_arrays_all]
+            col_output = [output_arrays[2] for output_arrays in output_arrays_all]
+            rhs_output = [output_arrays[3] for output_arrays in output_arrays_all]
+            val_cap = np.concatenate(val_output)
+            row_cap = np.concatenate(row_output)
+            col_cap = np.concatenate(col_output)
+            rhs_cap = np.concatenate(rhs_output)
             #print("... capacity constraints set ...")
 
             #   loop over VCs to check for active paths
