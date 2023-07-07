@@ -180,6 +180,7 @@ def capacity_constraints(G, P, row_cons_iterator, fee_dict):
     row = []
     col = []
     rhs = []
+    print("VC capacity constraint computing.")
     for edge in G.edges:                                                                # iteration over all edges (constraints)
         if not("intermediaries" in G.get_edge_data(edge[0], edge[1], key=edge[2])):     # but only over "real" edges
             col_path_iterator = 0
