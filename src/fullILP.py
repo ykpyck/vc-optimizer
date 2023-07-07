@@ -98,7 +98,7 @@ if __name__ == '__main__':
             row_cons_iter = len(T)+1
             for edge in G.edges:
                 if not("intermediaries" in G.get_edge_data(edge[0], edge[1], key=edge[2])):     # but only over "real" edges
-                    pool.apply(process_wrapper, ([G, P, row_cons_iter, fee_dict, edge, output_queue]))
+                    pool.apply_async(process_wrapper, ([G, P, row_cons_iter, fee_dict, edge, output_queue]))
                     #val, row, col, rhs = fullILPUtils.capacity_constraints(G, P, row_cons_iter, fee_dict, edge)
                     #val_cap.extend(val)
                     #row_cap.extend(row)
