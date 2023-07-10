@@ -175,7 +175,7 @@ def edge_part_of_vc(G, edge, vc):
             return True
     return False
 
-def capacity_constraints(G, P, row_cons_iterator, fee_dict, edge):
+def capacity_constraints(G, P, row_cons_iterator, fee_dict, edge, queue):
     val = []
     row = []
     col = []
@@ -203,6 +203,7 @@ def capacity_constraints(G, P, row_cons_iterator, fee_dict, edge):
                 col.append(col_path_iterator)
             col_path_iterator += 1
     rhs.append(-G.edges[edge]["capacity"])
+    queue.put((val, row, col, rhs))
     return val, row, col, rhs
 
 

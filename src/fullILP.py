@@ -9,11 +9,6 @@ import matplotlib.pyplot as plt
 import fullILPUtils
 import time
 import multiprocessing as mp
-import logging
-
-def process_wrapper(G, P, row_cons_iter, fee_dict, edge, output_queue):
-    output_arrays = fullILPUtils.capacity_constraints(G, P, row_cons_iter, fee_dict, edge)
-    output_queue.put(output_arrays)
 
 if __name__ == '__main__':
     try:
@@ -89,39 +84,39 @@ if __name__ == '__main__':
             #       rhs vector          -> respective channel capacity
             #cap_result = pool.starmap_async(fullILPUtils.capacity_constraints, [(G, P, len(T)+1, fee_dict)])
             #val_cap, row_cap, col_cap, rhs_cap = fullILPUtils.capacity_constraints(G, P, len(T)+1, fee_dict)
-            output_queue = mp.Queue()
-            pool = mp.Pool(processes=2)
             val_cap = []
             row_cap = []
             col_cap = []
             rhs_cap = []
             row_cons_iter = len(T)+1
+            queue = mp.Queue()
+            processes = []
             for edge in G.edges:
                 if not("intermediaries" in G.get_edge_data(edge[0], edge[1], key=edge[2])):     # but only over "real" edges
-                    pool.apply_async(process_wrapper, ([G, P, row_cons_iter, fee_dict, edge, output_queue]))
-                    #val, row, col, rhs = fullILPUtils.capacity_constraints(G, P, row_cons_iter, fee_dict, edge)
-                    #val_cap.extend(val)
-                    #row_cap.extend(row)
-                    #col_cap.extend(col)
-                    #rhs_cap.extend(rhs)
+                    process = mp.Process(target=fullILPUtils.capacity_constraints, args=(G, P, row_cons_iter, fee_dict, edge, queue))
                     row_cons_iter += 1
-            pool.close()
-            pool.join()
-            output_arrays_all = []
-
-            while not output_queue.empty():
-                output_arrays_all.append(output_queue.get())
-            print(output_arrays_all)
-            val_output = [output_arrays[0] for output_arrays in output_arrays_all]
-            row_output = [output_arrays[1] for output_arrays in output_arrays_all]
-            col_output = [output_arrays[2] for output_arrays in output_arrays_all]
-            rhs_output = [output_arrays[3] for output_arrays in output_arrays_all]
-            val_cap = np.concatenate(val_output)
-            row_cap = np.concatenate(row_output)
-            col_cap = np.concatenate(col_output)
-            rhs_cap = np.concatenate(rhs_output)
+                    processes.append(process)
+            for process in processes:
+                process.start()
+            while not queue.empty():
+                tmp = queue.get()
+                print(tmp[3])
+                val_cap.extend(tmp[0])
+                row_cap.extend(tmp[1])
+                col_cap.extend(tmp[2])
+                rhs_cap.extend(tmp[3])
+            for process in processes:
+                process.join()
+            while not queue.empty():
+                tmp = queue.get()
+                print(tmp[3])
+                val_cap.extend(tmp[0])
+                row_cap.extend(tmp[1])
+                col_cap.extend(tmp[2])
+                rhs_cap.extend(tmp[3])
+            #print(val_cap)
             #print("... capacity constraints set ...")
-
+            
             #   loop over VCs to check for active paths
             #       constraint          -> checks that if a path is used the respective VCs are active as well
             #       rhs                 -> 
@@ -131,6 +126,7 @@ if __name__ == '__main__':
             col_vce = []
             rhs_vce = []
             row_cons_iter = len(T)+number_of_PCs+1
+            processes = []
             for vc in G.edges:                                                              # iterate over VCs
                 if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
                     val, row, col, rhs = fullILPUtils.vc_existence(G, P, vc, row_cons_iter)
@@ -191,7 +187,7 @@ if __name__ == '__main__':
             execution_time = end_time - start_time
             print(f"Execution finished in {execution_time} seconds.")
             results.append((m, x, execution_time, len(P), level, number_of_VCs, number_of_PCs, len(G.nodes)))
-
+            
         for result in results:      # Display output 
             #print(result[1].X)
             print(f"G({result[-1]}, {result[-2]}) on level {result[4]} pot. Paths: {result[3]} pot. VCs: {result[5]} Obj.: {result[0].objVal} Time: {result[2]}")
