@@ -89,34 +89,23 @@ if __name__ == '__main__':
             col_cap = []
             rhs_cap = []
             row_cons_iter = len(T)+1
-            queue = mp.Queue()
-            processes = []
+            processes_result = []
+            pool = mp.Pool()
             for edge in G.edges:
                 if not("intermediaries" in G.get_edge_data(edge[0], edge[1], key=edge[2])):     # but only over "real" edges
-                    process = mp.Process(target=fullILPUtils.capacity_constraints, args=(G, P, row_cons_iter, fee_dict, edge, queue))
+                    processes_result.append(pool.apply_async(fullILPUtils.capacity_constraints, args=[G, P, row_cons_iter, fee_dict, edge]))
                     row_cons_iter += 1
-                    processes.append(process)
-            for process in processes:
-                process.start()
-            while not queue.empty():
-                tmp = queue.get()
-                print(tmp[3])
+            pool.close()
+            pool.join()
+            while len(processes_result) > 0:
+                tmp = processes_result.pop().get()
                 val_cap.extend(tmp[0])
                 row_cap.extend(tmp[1])
                 col_cap.extend(tmp[2])
                 rhs_cap.extend(tmp[3])
-            for process in processes:
-                process.join()
-            while not queue.empty():
-                tmp = queue.get()
-                print(tmp[3])
-                val_cap.extend(tmp[0])
-                row_cap.extend(tmp[1])
-                col_cap.extend(tmp[2])
-                rhs_cap.extend(tmp[3])
-            #print(val_cap)
-            #print("... capacity constraints set ...")
             
+            #print("... capacity constraints set ...")
+
             #   loop over VCs to check for active paths
             #       constraint          -> checks that if a path is used the respective VCs are active as well
             #       rhs                 -> 
@@ -125,16 +114,21 @@ if __name__ == '__main__':
             row_vce = []
             col_vce = []
             rhs_vce = []
+            pool = mp.Pool()
+            processes_result = []
             row_cons_iter = len(T)+number_of_PCs+1
-            processes = []
             for vc in G.edges:                                                              # iterate over VCs
                 if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
-                    val, row, col, rhs = fullILPUtils.vc_existence(G, P, vc, row_cons_iter)
-                    val_vce.extend(val)
-                    row_vce.extend(row)
-                    col_vce.extend(col)
-                    rhs_vce.extend(rhs)
+                    processes_result.append(pool.apply_async(fullILPUtils.vc_existence, args=[G, P, vc, row_cons_iter]))
                     row_cons_iter += 1
+            pool.close()
+            pool.join()
+            while len(processes_result) > 0:
+                tmp = processes_result.pop().get()
+                val_vce.extend(tmp[0])
+                row_vce.extend(tmp[1])
+                col_vce.extend(tmp[2])
+                rhs_vce.extend(tmp[3])
             #print("... vc existence constraints set ...")
 
             #   loop over VCs to check for active paths
@@ -145,15 +139,21 @@ if __name__ == '__main__':
             row_vcc = []
             col_vcc = []
             rhs_vcc = []
+            pool = mp.Pool()
+            processes_result = []
             row_cons_iter = len(T)+number_of_PCs+number_of_VCs+1
             for vc in G.edges:                                                              # iterate over VCs
                 if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
-                    val, row, col, rhs = fullILPUtils.vc_capacity(G, P, vc, row_cons_iter, number_of_VCs, fee_dict)
-                    val_vcc.extend(val)
-                    row_vcc.extend(row)
-                    col_vcc.extend(col)
-                    rhs_vcc.extend(rhs)
+                    processes_result.append(pool.apply_async(fullILPUtils.vc_capacity, args=[G, P, vc, row_cons_iter, number_of_VCs, fee_dict]))
                     row_cons_iter += 1
+            pool.close()
+            pool.join()
+            while len(processes_result) > 0:
+                tmp = processes_result.pop().get()
+                val_vcc.extend(tmp[0])
+                row_vcc.extend(tmp[1])
+                col_vcc.extend(tmp[2])
+                rhs_vcc.extend(tmp[3])
             #print("... vc capacity constraints set, all constraints set.")
 
             #adv_result = pool.starmap_async(fullILPUtils.adversaries, [(G, P, adversary_nodes, len(T)+number_of_PCs+number_of_VCs+number_of_VCs+1)])
@@ -194,7 +194,7 @@ if __name__ == '__main__':
             #print(f'Obj: {result[0].ObjVal}')
             #print(f"Time taken: {result[2]}")
             #print(f"Number of paths: {result[3]}")
-
+        #'''
     except gp.GurobiError as e:
         print('Error code ' + str(e.errno) + ": " + str(e))
 
