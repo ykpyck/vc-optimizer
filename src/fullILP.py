@@ -19,7 +19,7 @@ if __name__ == '__main__':
                  ("tests/test4-graph.txt", "tests/test4-transactions.txt"),
                  ("tests/test5-graph.txt", "tests/test5-transactions.txt"),]
         adversary_nodes = ['a']
-        levels = [-1, 0, 1]
+        levels = [-1, 0]
         c_tr, transaction_percentage = 1, 1     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
         cutoff = 100                             # cutoff might be usefull to be set so solutionspace is limited
         graph_input = tests[1][0]
@@ -66,7 +66,7 @@ if __name__ == '__main__':
             #   loop over transactions  -> checks that transactions are uniquely successful
             #       constraint          -> per row all paths of relevant transactions 
             #       rhs                 -> element of {0,1}
-            uniq_result = pool.starmap_async(fullILPUtils.transaction_uniqueness, [(G, T, P)])
+            uniq_result = pool.apply_async(fullILPUtils.transaction_uniqueness, args=[G, T, P])
             #val_uniq, row_uniq, col_uniq, rhs_uniq = fullILPUtils.transaction_uniqueness(G, T, P)
 
             #   + 1                     -> percentage of successful transaction amounts
@@ -75,44 +75,44 @@ if __name__ == '__main__':
             #   *                       -> percentage of successful transactions
             #       constraint          -> all paths
             #       rhs                 -> c_tr times number of transactions
-            trans_result = pool.starmap_async(fullILPUtils.transaction_constraint, [(G, T, P, len(T), c_tr, transaction_percentage)])
+            trans_result = pool.apply_async(fullILPUtils.transaction_constraint, args=[G, T, P, len(T), c_tr, transaction_percentage])
             #val_suc, row_suc, col_suc, rhs_suc = fullILPUtils.transaction_constraint(G, T, P, len(T), c_tr, transaction_percentage)
             #print("... transaction constraints set ...")
 
             #   loop over channels      -> checks capacity of all channels
             #       constraint matrix   -> per row relevant routing_fees and trans_amounts will be added 
             #       rhs vector          -> respective channel capacity
-            cap_result = pool.starmap_async(fullILPUtils.capacity_constraints, [(G, P, len(T)+1, fee_dict)])
+            cap_result = pool.apply_async(fullILPUtils.capacity_constraints, args=[G, P, len(T)+1, fee_dict])
             #val_cap, row_cap, col_cap, rhs_cap = fullILPUtils.capacity_constraints(G, P, len(T)+1, fee_dict)
             #print("... capacity constraints set ...")
 
             #   loop over VCs to check for active paths
             #       constraint          -> checks that if a path is used the respective VCs are active as well
             #       rhs                 -> 
-            vcexist_result = pool.starmap_async(fullILPUtils.vc_existence, [(G, T, P, len(T)+number_of_PCs+1)])
+            vcexist_result = pool.apply_async(fullILPUtils.vc_existence, args=[G, T, P, len(T)+number_of_PCs+1])
             #val_vce, row_vce, col_vce, rhs_vce = fullILPUtils.vc_existence(G, T, P, len(T)+number_of_PCs+1)
             #print("... vc existence constraints set ...")
 
             #   loop over VCs to check for active paths
             #       constraint          -> checks that if a path is used the respective VCs are active as well
             #       rhs                 -> 
-            vccap_result = pool.starmap_async(fullILPUtils.vc_capacity, [(G, T, P, len(T)+number_of_PCs+number_of_VCs+1, number_of_VCs, fee_dict)])
+            vccap_result = pool.apply_async(fullILPUtils.vc_capacity, args=[G, T, P, len(T)+number_of_PCs+number_of_VCs+1, number_of_VCs, fee_dict])
             #val_vcc, row_vcc, col_vcc, rhs_vcc = fullILPUtils.vc_capacity(G, T, P, len(T)+number_of_PCs+number_of_VCs+1, number_of_VCs, fee_dict)
             #print("... vc capacity constraints set, all constraints set.")
 
-            adv_result = pool.starmap_async(fullILPUtils.adversaries, [(G, P, adversary_nodes, len(T)+number_of_PCs+number_of_VCs+number_of_VCs+1)])
+            adv_result = pool.apply_async(fullILPUtils.adversaries, args=[G, P, adversary_nodes, len(T)+number_of_PCs+number_of_VCs+number_of_VCs+1])
             #val_adv, row_adv, col_adv, rhs_adv = fullILPUtils.adversaries(G, P, adversary_nodes, len(T)+number_of_PCs+number_of_VCs+number_of_VCs+1)
 
             # collect and combine
             pool.close()
             pool.join()
 
-            val_uniq, row_uniq, col_uniq, rhs_uniq = uniq_result.get()[0]
-            val_suc, row_suc, col_suc, rhs_suc = trans_result.get()[0]
-            val_cap, row_cap, col_cap, rhs_cap = cap_result.get()[0]
-            val_vce, row_vce, col_vce, rhs_vce = vcexist_result.get()[0]
-            val_vcc, row_vcc, col_vcc, rhs_vcc = vccap_result.get()[0]
-            val_adv, row_adv, col_adv, rhs_adv = adv_result.get()[0]
+            val_uniq, row_uniq, col_uniq, rhs_uniq = uniq_result.get()
+            val_suc, row_suc, col_suc, rhs_suc = trans_result.get()
+            val_cap, row_cap, col_cap, rhs_cap = cap_result.get()
+            val_vce, row_vce, col_vce, rhs_vce = vcexist_result.get()
+            val_vcc, row_vcc, col_vcc, rhs_vcc = vccap_result.get()
+            val_adv, row_adv, col_adv, rhs_adv = adv_result.get()
 
             val = np.concatenate((np.array(val_uniq), np.array(val_suc), np.array(val_cap), np.array(val_vce), np.array(val_vcc), np.array(val_vcc)))
             row = np.concatenate((np.array(row_uniq), np.array(row_suc), np.array(row_cap), np.array(row_vce), np.array(row_vcc), np.array(row_vcc)))
