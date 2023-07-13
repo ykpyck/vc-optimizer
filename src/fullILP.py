@@ -85,6 +85,13 @@ if __name__ == '__main__':
             cap_result = pool.apply_async(fullILPUtils.capacity_constraints, args=[G, P, len(T)+1, fee_dict])
             #val_cap, row_cap, col_cap, rhs_cap = fullILPUtils.capacity_constraints(G, P, len(T)+1, fee_dict)
             #print("... capacity constraints set ...")
+            pool.close()
+            pool.join()
+
+            val_uniq, row_uniq, col_uniq, rhs_uniq = uniq_result.get()
+            val_suc, row_suc, col_suc, rhs_suc = trans_result.get()
+            val_cap, row_cap, col_cap, rhs_cap = cap_result.get()
+            pool = mp.Pool()
 
             #   loop over VCs to check for active paths
             #       constraint          -> checks that if a path is used the respective VCs are active as well
@@ -106,10 +113,7 @@ if __name__ == '__main__':
             # collect and combine
             pool.close()
             pool.join()
-
-            val_uniq, row_uniq, col_uniq, rhs_uniq = uniq_result.get()
-            val_suc, row_suc, col_suc, rhs_suc = trans_result.get()
-            val_cap, row_cap, col_cap, rhs_cap = cap_result.get()
+            
             val_vce, row_vce, col_vce, rhs_vce = vcexist_result.get()
             val_vcc, row_vcc, col_vcc, rhs_vcc = vccap_result.get()
             val_adv, row_adv, col_adv, rhs_adv = adv_result.get()
