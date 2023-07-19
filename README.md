@@ -6,3 +6,6 @@ Packages installed:
     scipy
     networkx
     matplotlib
+
+graphs that are used for the experiments are saved in the random_graphs directory
+- further graphs of different sizes can be added with randGraphGenerator.py 

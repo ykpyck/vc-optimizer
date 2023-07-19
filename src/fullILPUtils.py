@@ -180,7 +180,6 @@ def capacity_constraints(G, P, row_cons_iterator, fee_dict):
     row = []
     col = []
     rhs = []
-    print("VC capacity constraint computing.")
     for edge in G.edges:                                                                # iteration over all edges (constraints)
         if not("intermediaries" in G.get_edge_data(edge[0], edge[1], key=edge[2])):     # but only over "real" edges
             col_path_iterator = 0
@@ -308,74 +307,3 @@ def adversaries(G, P, adversary_nodes, row_cons_iterator):
                 col_path_iterator += 1
         rhs.append(1)
     return val, row, col, rhs
-
-
-
-#####################
-'''
-G = read_network("tests/test1-graph.txt")                # load network from a list of edges with respective capacity, base fee, and routing fee
-number_of_PCs = len(G.edges)
-#print(G.edges)
-T = read_transactions("tests/test1-transactions.txt")    # loads transaction as tuples like: tuple(start, dest, amount)
-level = 5
-G = find_vc_edges(G, level)                              # finds and adds all VCs for specified level to G
-number_of_VCs = len(G.edges) - number_of_PCs
-P, VCs = read_paths(G, T, 3)                                     # finds all possible paths for every transaction using an nx function
-print(G)
-for p in P:
-    print(p)
-#for vc in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
-#    if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
-#        print(vc)
-print(VCs)
-
-print("-----")
-c_tr, transaction_percentage = 1, 1                                     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
-#   needed vars for ILP operations:
-row_cons_iterator = 0                                                   # sets the currently respected constraint/ row in sparse matrix and in the rhs vector
-val_dyn = []
-row_dyn = []
-col_dyn = []
-rhs_dyn = []
-
-fee_dict, obj = set_objective(P, T, G, number_of_VCs)
-val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = transaction_uniqueness(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator)
-val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = transaction_constraint(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator, c_tr, transaction_percentage)
-val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = capacity_constraints(G, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator, fee_dict)
-val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = vc_existence(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator)
-val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator = vc_capacity(G, T, P, val_dyn, row_dyn, col_dyn, rhs_dyn, row_cons_iterator, number_of_VCs, fee_dict)
-
-y = 0
-changes = []
-for x in range(len(row_dyn)):
-    if row_dyn[x] != y:
-        y += 1
-        changes.append(x)
-beginning = 0
-index = 0
-for change in changes: 
-    print(val_dyn[beginning:change])
-    print(row_dyn[beginning:change])
-    print(col_dyn[beginning:change])
-    print(rhs_dyn[index])
-    index += 1
-    beginning = change
-    print("-------")
-print(val_dyn[beginning:])
-print(val_dyn[beginning:])
-print(row_dyn[beginning:])
-print(col_dyn[beginning:])
-print(rhs_dyn[index])
-print("-------")
-
-print(G.get_edge_data('z', 'a', 0))
-print(G.get_edge_data('r', 'a', 0))
-
-#for path in P:
-#    print(path)
-#
-#for vc in G.edges:    # might be possible to shorten (calc offset, not iterate) # now iterate over VCs
-#    if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
-#        print(vc)
-##'''
-########################################################################

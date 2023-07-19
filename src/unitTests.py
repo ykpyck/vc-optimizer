@@ -13,7 +13,7 @@ class TestReadPaths(unittest.TestCase):
         T = fullILPUtils.read_transactions(transaction_input)  # loads transaction as tuples like: tuple(start, dest, amount)
         G = fullILPUtils.find_vc_edges(G, 5)            # finds and adds all VCs for specified level to G
         P = fullILPUtils.read_paths(G, T, 3)
-
+ 
         expected_P = [([('r', 't', 0), ('t', 'a', 0), ('a', 'z', 0)], 0, 0), 
                       ([('r', 't', 0), ('t', 'm', 0), ('m', 'z', 0)], 0, 1), 
                       ([('r', 't', 0), ('t', 'm', 1), ('m', 'z', 0)], 0, 2), 
