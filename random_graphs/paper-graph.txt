@@ -1,0 +1,6 @@
+Alice Bob 100000 1 1
+Bob Jim 100000 1 1
+Bob Michael 100000 1 1
+Jim Kelly 100000 1 1
+Michael Kelly 100000 1 1
+Kelly Ingrid 100000 1 1

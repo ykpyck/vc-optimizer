@@ -9,21 +9,25 @@ import matplotlib.pyplot as plt
 import fullILPUtils
 import time
 import multiprocessing as mp
+import os
 
 if __name__ == '__main__':
     try:
-        tests = [("tests/paper-graph.txt", "tests/paper-transactions.txt"),
-                 ("tests/test1-graph.txt", "tests/test1-transactions.txt"), 
-                 ("tests/test2-graph.txt", "tests/test2-transactions.txt"),
-                 ("tests/test3-graph.txt", "tests/test3-transactions.txt"),
-                 ("tests/test4-graph.txt", "tests/test4-transactions.txt"),
-                 ("tests/test5-graph.txt", "tests/test5-transactions.txt"),]
-        adversary_nodes = ['a']
+        graph_sizes = [5, 6, 7]
+        number_of_graphs = 2
+        number_of_transactions = 2
+        graph_size = 5
+        number_of_graph = 0
+        directory = f"random_graphs/graph_size{graph_size}"
+        graph_path = os.path.join(directory, f"graph_{number_of_graph}.txt")
+        transactions_path = os.path.join(directory, f"transactions_{number_of_graph}.txt")
+        tests = [(graph_path, transactions_path)]
+        adversary_nodes = []
         levels = [-1, 0]
         c_tr, transaction_percentage = 1, 1     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
         cutoff = None                             # cutoff might be usefull to be set so solutionspace is limited
-        graph_input = tests[1][0]
-        transaction_input = tests[1][1]
+        graph_input = tests[0][0]
+        transaction_input = tests[0][1]
         results = []
         for level in levels:
             start_time = time.perf_counter()
@@ -44,7 +48,7 @@ if __name__ == '__main__':
             else: 
                 number_of_VCs = 0
             #print("... calculating possible paths ...")
-            P = fullILPUtils.read_paths(G, T, cutoff)               # finds all possible paths for every transaction using an nx function
+            P = fullILPUtils.read_paths(G, T, None)               # finds all possible paths for every transaction using an nx function
             #print("... all possible paths found, input ready.")
             #   needed vars for ILP operations:
             print(f"Level {level} creates {number_of_VCs} possible VCs and {len(P)} possible paths.")
@@ -134,14 +138,29 @@ if __name__ == '__main__':
             end_time = time.perf_counter()
             execution_time = end_time - start_time
             print(f"Execution finished in {execution_time} seconds.")
-            results.append((m, x, execution_time, len(P), level, number_of_VCs, number_of_PCs, len(G.nodes)))
+            ############################ result processing: 
+            index = 0
+            paths_taken = []
+            for var in x.X[:len(P)]:
+                if var != 0:
+                    paths_taken.append(P[index])
+                index += 1
+            results.append((m, x.X, execution_time, P, level, number_of_VCs, number_of_PCs, len(G.nodes)))
 
         for result in results:      # Display output 
             #print(result[1].X)
-            print(f"G({result[-1]}, {result[-2]}) on level {result[4]} pot. Paths: {result[3]} pot. VCs: {result[5]} Obj.: {result[0].objVal} Time: {result[2]}")
-            #print(f'Obj: {result[0].ObjVal}')
+            print(f"G({result[-1]}, {result[-2]}) on level {result[4]} pot. Paths: {len(result[3])} pot. VCs: {result[5]} Obj.: {result[0].objVal} Time: {result[2]}")
+            #print(f'Obj: {result[0].Obj}')
             #print(f"Time taken: {result[2]}")
             #print(f"Number of paths: {result[3]}")
+            index = 0
+
+            for var in result[1][:len(result[3])]:
+                if var != 0:
+                    print(result[3][index])
+                index += 1
+
+        
 
     except gp.GurobiError as e:
         print('Error code ' + str(e.errno) + ": " + str(e))
