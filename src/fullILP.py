@@ -7,23 +7,21 @@ import scipy.sparse as sp
 import networkx as nx
 import matplotlib.pyplot as plt
 import fullILPUtils
-import time 
-import datetime
+import time
 import multiprocessing as mp
 import os
 
 if __name__ == '__main__':
     try:
         graph_sizes = [] 
-        for var in range(51): # what graph sizes to run
+        for var in range(16): # what graph sizes to run
             if var > 4:
                 graph_sizes.append(var)
         number_of_graphs = 10 # how many random graphs of graph size have been generated
         levels = [-1, 0]
-        c_tr, transaction_percentage = 1, 1     # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
-        #results = []
+        c_tr, transaction_percentage = 1, 1    # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
         for graph_size in graph_sizes:
-            directory = f"random_graphs/graphs/graph_size{graph_size}"
+            directory = f"experiments/random_graphs/graph_size{graph_size}"
             adversary_nodes = []
             for number_of_graph in range(number_of_graphs):
                 graph_path = os.path.join(directory, f"graph_{number_of_graph}.txt")
@@ -96,15 +94,17 @@ if __name__ == '__main__':
                     row = np.concatenate((np.array(row_uniq), np.array(row_suc), np.array(row_cap), np.array(row_vce), np.array(row_vcc), np.array(row_vcc)))
                     col = np.concatenate((np.array(col_uniq), np.array(col_suc), np.array(col_cap), np.array(col_vce), np.array(col_vcc), np.array(col_vcc)))
                     rhs = np.concatenate((np.array(rhs_uniq), np.array(rhs_suc), np.array(rhs_cap), np.array(rhs_vce), np.array(rhs_vcc), np.array(rhs_vcc)))
+                    end_time = time.perf_counter()
+                    exec_time_prereq = end_time - start_time
                     # build A sparse matrix
+                    start_time = time.perf_counter()
                     A = sp.csr_matrix((val, (row, col)), shape=(len(rhs), len(P)+(2*number_of_VCs)))
                     # Add constraints
                     m.addConstr(A @ x >= rhs, name="c")
                     # Optimize model
                     m.optimize()
                     end_time = time.perf_counter()
-                    execution_time = end_time - start_time
-                    print(f"Execution finished in {execution_time} seconds.")
+                    exec_time_gurobi = end_time - start_time
                     ############################ result processing: 
                     index = 0
                     paths_taken = []
@@ -112,13 +112,11 @@ if __name__ == '__main__':
                         if var != 0:
                             paths_taken.append(P[index])
                         index += 1
-                    #results.append((len(G.nodes), number_of_PCs, level, execution_time, number_of_VCs, len(P), m, x.X, paths_taken))
-                    if os.path.exists("random_graphs/results/results.txt"):
-                        mode = "a"
-                    else:
-                        mode = "w"
-                    with open("random_graphs/results/results.txt", mode) as file:
-                        file.write(f"{len(G.nodes)} {number_of_PCs} {number_of_graph} {level} {execution_time} {number_of_VCs} {len(P)} {m.ObjVal} {paths_taken} \n")
+                    if not os.path.exists("experiments/results/results.txt"):
+                        with open("experiments/results/results.txt", "w") as file: 
+                            file.write(f"nodes PCs graph_id level exec_time_prereq exec_time_gurobi VCs pot_paths objective optimal_paths \n")
+                    with open("experiments/results/results.txt", "a") as file:
+                        file.write(f"{len(G.nodes)} {number_of_PCs} {number_of_graph} {level} {exec_time_prereq} {exec_time_gurobi} {number_of_VCs} {len(P)} {m.ObjVal} {paths_taken} \n")
     except gp.GurobiError as e:
         print('Error code ' + str(e.errno) + ": " + str(e))
 
