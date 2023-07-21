@@ -14,7 +14,7 @@ import os
 if __name__ == '__main__':
     try:
         graph_sizes = [] 
-        for var in range(16): # what graph sizes to run
+        for var in range(51): # what graph sizes to run
             if var > 4:
                 graph_sizes.append(var)
         number_of_graphs = 10 # how many random graphs of graph size have been generated
