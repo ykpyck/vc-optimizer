@@ -3,9 +3,20 @@
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+import constants as cons
 
 def read_network(file_name: str):
-    G = nx.readwrite.edgelist.read_edgelist(file_name, create_using = nx.MultiGraph, data=(("capacity", int),("routing_fee_base", float),("routing_fee_prop", float),))
+    #G = nx.readwrite.edgelist.read_edgelist(file_name, create_using = nx.MultiGraph, data=(("capacity", int),("base_fee", float),("relative_fee", float),))
+    df = pd.read_csv(file_name)
+
+    G = nx.MultiGraph()
+
+    for _, row in df.iterrows():
+        source = row['nodeA']
+        target = row['nodeB']
+        edge_data = {key: row[key] for key in df.columns if key not in ['nodeA', 'nodeB']}
+        G.add_edge(source, target, **edge_data)
     return G
 
 def read_transactions(file_name: str):
@@ -37,9 +48,9 @@ def find_vc_edges(G, level=0):
                     intermediary_edges.append(second_edge)
                     if not((node, second_edge[1], intermediaries) in tmp):
                             if not((second_edge[1], node, intermediaries) in tmp):
-                                max_base_fee = max(G.get_edge_data(first_edge[0], first_edge[1], key=first_edge[2])["routing_fee_base"], G.get_edge_data(second_edge[0], second_edge[1], key=second_edge[2])["routing_fee_base"])
-                                max_prop_fee = max(G.get_edge_data(first_edge[0], first_edge[1], key=first_edge[2])["routing_fee_prop"], G.get_edge_data(second_edge[0], second_edge[1], key=second_edge[2])["routing_fee_prop"])
-                                vc_edges.append((node, second_edge[1], {"routing_fee_base": max_base_fee, "routing_fee_prop": max_prop_fee, "intermediaries": intermediaries,"intermediary_edges": intermediary_edges}))
+                                max_base_fee = max(G.get_edge_data(first_edge[0], first_edge[1], key=first_edge[2])["base_fee"], G.get_edge_data(second_edge[0], second_edge[1], key=second_edge[2])["base_fee"])
+                                max_prop_fee = max(G.get_edge_data(first_edge[0], first_edge[1], key=first_edge[2])["relative_fee"], G.get_edge_data(second_edge[0], second_edge[1], key=second_edge[2])["relative_fee"])
+                                vc_edges.append((node, second_edge[1], {"base_fee": max_base_fee, "relative_fee": max_prop_fee, "intermediaries": intermediaries,"intermediary_edges": intermediary_edges}))
                                 tmp.append((node, second_edge[1], intermediaries))
     G.add_edges_from(vc_edges)
     if level == 0:
@@ -51,14 +62,21 @@ def find_vc_edges(G, level=0):
 
 def read_paths(G, T, cutoff=None):
     P = []
-    tmp = []
     trans_id = 0
+    adversaries = list(cons.ADVERSARIES)
     for t in T:
         path_id = 0
         paths_t = nx.simple_paths.all_simple_edge_paths(G, t[0], t[1], cutoff=cutoff)
-        for path in paths_t:
-            P.append((path, trans_id, path_id))
-            path_id += 1
+        if len(cons.ADVERSARIES) > 0:
+            for path in paths_t:
+                for adv in adversaries:
+                    if not adv in path:
+                        P.append((path, trans_id, path_id))
+                        path_id += 1
+        else:    
+            for path in paths_t:
+                P.append((path, trans_id, path_id))
+                path_id += 1
         trans_id += 1
     return P
 
@@ -75,7 +93,7 @@ def calc_fee_objective(P, T, G, obj):
             if edge[1] == dest:
                 fee_dict.update({(edge, path[1], path[2]): trans_amount})
             else:
-                routing_fee = (trans_amount * G.get_edge_data(edge[0], edge[1], key=edge[2])["routing_fee_prop"]) + G.get_edge_data(edge[0], edge[1], key=edge[2])["routing_fee_base"]
+                routing_fee = (trans_amount * G.get_edge_data(edge[0], edge[1], key=edge[2])["relative_fee"]) + G.get_edge_data(edge[0], edge[1], key=edge[2])["base_fee"]
                 trans_amount = trans_amount + routing_fee
                 fee_dict.update({(edge, path[1], path[2]): trans_amount})
         obj[index] = trans_amount - int(T[path[1]][2])  # the objective only stores the fees 
@@ -85,11 +103,11 @@ def calc_fee_objective(P, T, G, obj):
 def calc_vc_objective(G, obj, index):
     for vc in G.edges:                                                          # now iterate over VCs
         if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):        # only VCs
-            obj[index] = G.get_edge_data(vc[0], vc[1], key=vc[2])["routing_fee_base"]
+            obj[index] = G.get_edge_data(vc[0], vc[1], key=vc[2])["base_fee"]
             index += 1
     for vc in G.edges:                                                          # now iterate over VCs
         if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):        # only VCs
-            obj[index] = G.get_edge_data(vc[0], vc[1], key=vc[2])["routing_fee_prop"]
+            obj[index] = G.get_edge_data(vc[0], vc[1], key=vc[2])["relative_fee"]
             index += 1
     return obj, index
 
@@ -193,18 +211,18 @@ def capacity_constraints(G, P, row_cons_iterator, fee_dict):
             for vc in G.edges:                                                              # now iterate over VCs
                 if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
                     if edge_part_of_vc(G, edge, vc):
-                        val.append(-G.get_edge_data(vc[0], vc[1], key=vc[2])["routing_fee_base"])
+                        val.append(-G.get_edge_data(vc[0], vc[1], key=vc[2])["base_fee"])
                         row.append(row_cons_iterator)                                   
                         col.append(col_path_iterator)
                     col_path_iterator += 1
             for vc in G.edges:                                                              # now iterate over VCs
                 if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):            # only VCs
                     if edge_part_of_vc(G, edge, vc):
-                        val.append(-G.get_edge_data(vc[0], vc[1], key=vc[2])["routing_fee_prop"])
+                        val.append(-G.get_edge_data(vc[0], vc[1], key=vc[2])["relative_fee"])
                         row.append(row_cons_iterator)                                   
                         col.append(col_path_iterator)
                     col_path_iterator += 1
-            rhs.append(-G.edges[edge]["capacity"])
+            rhs.append(-G.edges[edge]["satoshis"])
             row_cons_iterator += 1
     return val, row, col, rhs
 
@@ -291,19 +309,83 @@ def vc_capacity(G, T, P, row_cons_iterator, number_of_VCs, fee_dict):
             row_cons_iterator += 1
     return val, row, col, rhs
 
-def adversaries(G, P, adversary_nodes, row_cons_iterator):
-    val = []
-    row = []
-    col = []
-    rhs = []
-    col_path_iterator = len(P)
-    for adversary in adversary_nodes:
-        for vc in G.edges:                                                       # now iterate over VCs
-            if "intermediaries" in G.get_edge_data(vc[0], vc[1], key=vc[2]):     # only VCs
-                if adversary in G.get_edge_data(vc[0], vc[1], key=vc[2])["intermediaries"]:
-                    val.append(1)
-                    row.append(row_cons_iterator)                                   
-                    col.append(col_path_iterator)
-                col_path_iterator += 1
-        rhs.append(1)
-    return val, row, col, rhs
+def draw_graph_transactions(paths_taken, G_copy):
+    edge_color = []
+    edge_width = []
+    node_size = []
+    relevant_nodes = []
+    deg_centr = nx.degree_centrality(G_copy)
+    G_tmp = G_copy.copy()
+    for path in paths_taken:
+        for edge in path[0]:
+            if not edge in G_tmp.edges:
+                G_tmp.add_edge(edge[0], edge[1], key=edge[2])
+            if not edge[0] in relevant_nodes:
+                relevant_nodes.append(edge[0])
+            if not edge[1] in relevant_nodes:
+                relevant_nodes.append(edge[1])
+            
+    labels = {}
+    for edge in G_copy:
+        node_size.append(deg_centr[edge]*1900)
+    for node in G_copy.nodes:
+        if node in relevant_nodes:
+            labels[node] =  node
+        else:
+            labels[node] = ''
+
+    if cons.DRAWING == 'transactions':
+        edge_colors = {}
+        edge_widths = {}
+        for i, path in enumerate(paths_taken):
+            for edge in path[0]:
+                edge_colors[edge] = f'C{i}'
+                edge_widths[edge] = 3.0
+        for e in G_tmp.edges:
+            edge_color.append(edge_colors.get(e, 'black'))
+            edge_width.append(edge_widths.get(e, 1))
+    elif cons.DRAWING == 'VCs':
+        for edge in G_tmp.edges:
+            if not edge in G_copy.edges:
+                edge_color.append('orange')
+                edge_width.append(2)
+            else: 
+                edge_color.append('black')
+                edge_width.append(1)
+    else:
+        for edge in G_tmp.edges:
+            if not edge in G_copy.edges:
+                edge_color.append('orange')
+                edge_width.append(2)
+            else: 
+                edge_color.append('black')
+                edge_width.append(1)
+        fig, ax = plt.subplots()
+        nx.draw(G_tmp, labels=labels, ax=ax, edge_color=edge_color, width=edge_width, node_size=node_size)
+        plt.show()
+        
+        edge_color = []
+        edge_width = []
+        edge_colors = {}
+        edge_widths = {}
+        for i, path in enumerate(paths_taken):
+            for edge in path[0]:
+                edge_colors[(edge[0], edge[1], edge[2])] = f'C{i}'
+                edge_widths[(edge[0], edge[1], edge[2])] = 3.0
+                edge_colors[(edge[1], edge[0], edge[2])] = f'C{i}'
+                edge_widths[(edge[1], edge[0], edge[2])] = 3.0
+        #edge_trx = []
+        #for i, path in enumerate(paths_taken):
+        #    for edge in path[0]:
+        #        if not edge in edge_trx:
+        #            edge_trx.append((edge[0], edge[1]))
+        for e in G_tmp.edges:
+            edge_color.append(edge_colors.get(e, 'black'))
+            edge_width.append(edge_widths.get(e, 1))
+        fig, ax = plt.subplots()
+        nx.draw(G_tmp, labels=labels, ax=ax, edge_color=edge_color, width=edge_width, node_size=node_size)
+        plt.show()
+    
+    #nx.draw(G_copy, ax=ax)
+    #plt.show()
+    # if in G_copy but not in G, edge color equals VC

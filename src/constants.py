@@ -1,0 +1,17 @@
+NUMBER_OF_GRAPHS = 6    # default to 10 to build significant average
+START_GRAPH_ID = 5
+END_GRAPH_ID = NUMBER_OF_GRAPHS
+NUMBER_OF_TRXS = 7
+GRAPH_SIZES_LB = 15
+GRAPH_SIZES_UB = 15
+RAND_SYM = "rand_sym" # equal amount of nodes and edges
+LN_RATIO = "ln_ratio"   # 17k nodes to 70k channels 1:4
+UNIQ = "uniq_graph" # if chosen file_paths have to be specified 
+GRAPH_TOPOLOGY = LN_RATIO
+UNIQ_GRAPH_PATH = "src/experiments/paper-graph.csv"
+UNIQ_TRX_PATH = "src/experiments/paper-transactions.txt"
+LEVELS = [1] # what levels of VC do we allow
+ADVERSARIES = ["H1"]
+DRAW_TRX = "transactions"
+DRAW_VCs = "VCs"
+DRAWING = True  # True if both
