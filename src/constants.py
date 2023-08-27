@@ -12,9 +12,9 @@ LN_MINIATURE = 'ln_min'
 UNIQ = "uniq_graph"         # if chosen file_paths have to be specified (above constants are irrelevant)
 GRAPH_TOPOLOGY = UNIQ
 # change back to LN_RATIO
-UNIQ_GRAPH_PATH = "src/experiments/graphs/ln_min/graph_size_13_13/graph_17.csv" #"src/experiments/graphs/unique_graphs/paper-graph.csv"
-UNIQ_TRX_PATH = "src/experiments/graphs/ln_min/graph_size_13_13/10_transactions/transactions_17.txt" #"src/experiments/graphs/unique_graphs/paper-transactions.txt"
-LEVELS = [1]                # what levels of VCs do we allow
+UNIQ_GRAPH_PATH = "src/experiments/graphs/unique_graphs/graph_prj_rep.csv" #"src/experiments/graphs/unique_graphs/paper-graph.csv"
+UNIQ_TRX_PATH = "src/experiments/graphs/unique_graphs/transactions_prj_rep_10.txt" #"src/experiments/graphs/unique_graphs/paper-transactions.txt"
+LEVELS = [-1]                # what levels of VCs do we allow
 ADVERSARIES = ["adversary"]        
 DRAWING = True
 C_TR = 1

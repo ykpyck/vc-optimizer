@@ -3,6 +3,9 @@ src/notes.txt
 src/notesUtils.txt
 random_graphs/graphs
 .DS_Store
+src/experiments/graphs/ln_ratio
+src/experiments/graphs/ln_min
+src/experiments/results/old
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
