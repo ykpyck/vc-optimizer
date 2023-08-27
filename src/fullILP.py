@@ -14,37 +14,41 @@ import constants as cons
 
 if __name__ == '__main__':
     try:
-        graph_sizes = []
-        if cons.GRAPH_TOPOLOGY == "rand_sym":
-            for var in range(cons.GRAPH_SIZES_LB, cons.GRAPH_SIZES_UB+1): # what graph sizes to run
-                graph_sizes.append((var, var))
-        elif cons.GRAPH_TOPOLOGY == "ln_ratio":
-            for var in range(cons.GRAPH_SIZES_LB, cons.GRAPH_SIZES_UB+1, 5):
-                nodes_UB = (var*(var-1))/2
-                for var2 in range(int((var*3.5)), min(int((var*4.5)+1), int(nodes_UB)+1)): #int((var*3.5)-1),min(int((var*4.5)+1), int(nodes_UB)+1)
-                    graph_sizes.append((var, var2))
-        else:
+        #   define set(s) of graphs to be analyzed 
+        if cons.GRAPH_TOPOLOGY == 'uniq_graph':
             uniq_dir = cons.GRAPH_TOPOLOGY
             graph_sizes = [(1,1)]
+        else:
+            graph_sizes = fullILPUtils.compute_graph_sizes()    
         number_of_graphs = cons.NUMBER_OF_GRAPHS # how many random graphs of graph size have been generated
-        levels = cons.LEVELS
-        c_tr, transaction_percentage = 1, 1    # sets percentage for , 0: a least succ trx amount 1: least num of succ trxs
+        c_tr = cons.C_TR
+        transaction_percentage = cons.TRANS_AMOUNT_OR_NUM
+
+        # load set of graph_size to be analyzed 
         for graph_size in graph_sizes:
             directory = f"src/experiments/graphs/{cons.GRAPH_TOPOLOGY}/graph_size_{graph_size[0]}_{graph_size[1]}"
-            
-            for number_of_graph in range(cons.START_GRAPH_ID, cons.END_GRAPH_ID):
-                if cons.GRAPH_TOPOLOGY == "rand_sym" or cons.GRAPH_TOPOLOGY == "ln_ratio":
+            # final presets depending on the number of random graphs to be averaged 
+            if cons.GRAPH_TOPOLOGY == 'uniq_graph':
+                start = 0
+                end = 1
+            else: 
+                start = cons.START_GRAPH_ID
+                end = cons.END_GRAPH_ID
+            for number_of_graph in range(start, end):
+                if cons.GRAPH_TOPOLOGY == "rand_sym" or cons.GRAPH_TOPOLOGY == "ln_ratio" or cons.GRAPH_TOPOLOGY == 'ln_min':
                     graph_path = os.path.join(directory, f"graph_{number_of_graph}.csv")
                     transactions_path = os.path.join(directory, f"{cons.NUMBER_OF_TRXS}_transactions/transactions_{number_of_graph}.txt")
                 else: 
                     graph_path = cons.UNIQ_GRAPH_PATH
                     transactions_path = cons.UNIQ_TRX_PATH
-                for level in levels:
+                print(f'Presets done.')
+                # presets done 
+                for level in cons.LEVELS:
                     start_time = time.perf_counter()
-                    G = fullILPUtils.read_network(graph_path)  # load network from a list of edges with respective capacity, base fee, and routing fee
+                    G = fullILPUtils.read_network(graph_path)
                     G_copy = G.copy()
                     number_of_PCs = len(G.edges)
-                    T = fullILPUtils.read_transactions(transactions_path)  # loads transaction as tuples like: tuple(start, dest, amount)
+                    T = fullILPUtils.read_transactions(transactions_path)   # loads transaction as tuples like: tuple(start, dest, amount)
                     cutoff = nx.diameter(G)
                     if level >= 0:
                         G = fullILPUtils.find_vc_edges(G, level)            # finds and adds all VCs for specified level to G
@@ -52,9 +56,8 @@ if __name__ == '__main__':
                     else: 
                         number_of_VCs = 0
                     P = fullILPUtils.read_paths(G, T, cutoff)               # finds all possible paths for every transaction using an nx function
-
+                    print(f'Network loaded with {len(G.nodes)} nodes, {number_of_VCs} possible VCs, and {len(P)} possible paths.')
                     #   needed vars for ILP operations:
-                    print(f"Level {level} creates {number_of_VCs} possible VCs and {len(P)} possible paths.")
                     # Create a new model
                     m = gp.Model("Ilp")
                     # Create variables              -> path_p(trans_t) + exists_vckij + vc_kij.capacity
@@ -62,6 +65,8 @@ if __name__ == '__main__':
                     # Set objective                 -> routing_fee(t, p, ch_ij)
                     fee_dict, obj = fullILPUtils.set_objective(P, T, G, number_of_VCs)
                     m.setObjective(obj @ x, GRB.MINIMIZE)
+                    print(f'Objective vector of dimenseion (1,{len(obj)}) set.')
+                    print(f'Computing constraints...')
                     pool = mp.Pool()
                     # Build (sparse) constraint matrix 
                     # Build rhs vector (done simultaneously (same loops))
@@ -75,7 +80,7 @@ if __name__ == '__main__':
                     #   *                       -> percentage of successful transactions
                     #       constraint          -> all paths
                     #       rhs                 -> c_tr times number of transactions
-                    trans_result = pool.apply_async(fullILPUtils.transaction_constraint, args=[G, T, P, len(T), c_tr, transaction_percentage])
+                    
                     #   loop over channels      -> checks capacity of all channels
                     #       constraint matrix   -> per row relevant routing_fees and trans_amounts will be added 
                     #       rhs vector          -> respective channel capacity
@@ -88,9 +93,11 @@ if __name__ == '__main__':
                     #       constraint          -> checks that if a path is used the respective VCs are active as well
                     #       rhs                 -> 
                     vcexist_result = pool.apply_async(fullILPUtils.vc_existence, args=[G, T, P, len(T)+number_of_PCs+1])
+                    trans_result = pool.apply_async(fullILPUtils.transaction_constraint, args=[G, T, P, len(T), c_tr, transaction_percentage])
                     # collect and combine
                     pool.close()
                     pool.join()
+                    
                     val_vce, row_vce, col_vce, rhs_vce = vcexist_result.get()
                     val_vcc, row_vcc, col_vcc, rhs_vcc = vccap_result.get()
                     val_uniq, row_uniq, col_uniq, rhs_uniq = uniq_result.get()
@@ -103,6 +110,7 @@ if __name__ == '__main__':
                     rhs = np.concatenate((np.array(rhs_uniq), np.array(rhs_suc), np.array(rhs_cap), np.array(rhs_vce), np.array(rhs_vcc), np.array(rhs_vcc)))
                     end_time = time.perf_counter()
                     exec_time_prereq = end_time - start_time
+                    print(f'... constraints set.')
                     # build sparse matrix A
                     start_time = time.perf_counter()
                     A = sp.csr_matrix((val, (row, col)), shape=(len(rhs), len(P)+(2*number_of_VCs)))
@@ -112,32 +120,38 @@ if __name__ == '__main__':
                     m.optimize()
                     end_time = time.perf_counter()
                     exec_time_gurobi = end_time - start_time
-                    ############################ result processing: 
+                    ############################ result processing:
+
                     index = 0
                     paths_taken = []
                     obj_used = []
                     for var in x.X[:len(P)]:
                         if var != 0:
                             paths_taken.append(P[index])
-                            obj_used.append(obj[index])
                         index += 1
-                    for var in x.X[len(P):]:
-                        if var != 0:
-                            obj_used.append(obj[index])
-                        index += 1
+
+                    VCs = []
+                    for edge in G.edges:
+                        if "intermediaries" in G.get_edge_data(edge[0], edge[1], key=edge[2]):
+                            VCs.append(edge)
+                    index = 0
                     vcs_created = 0
+                    created_VCs = []
                     for var in x.X[len(P):len(P)+number_of_VCs]:
                         if var != 0:
                             vcs_created += 1
+                            created_VCs.append(VCs[index])
+                        index += 1
+                    
                     if not os.path.exists("src/experiments/results/results.txt"):
                         with open("src/experiments/results/results.txt", "w") as file: 
-                            file.write(f"nodes PCs graph_id level exec_time_prereq exec_time_gurobi VCs pot_paths objective VCs_created graph_diameter\n")
+                            file.write(f"nodes PCs graph_id level exec_time_prereq exec_time_gurobi VCs pot_paths objective VCs_created graph_diameter number_of_trxs\n")
                     with open("src/experiments/results/results.txt", "a") as file:
-                        file.write(f"{len(G.nodes)} {number_of_PCs} {number_of_graph} {level} {exec_time_prereq} {exec_time_gurobi} {number_of_VCs} {len(P)} {m.ObjVal} {vcs_created} {cutoff}\n")
+                        file.write(f"{len(G.nodes)} {number_of_PCs} {number_of_graph} {level} {exec_time_prereq} {exec_time_gurobi} {number_of_VCs} {len(P)} {m.ObjVal} {vcs_created} {cutoff} {len(T)} \n")
                     
                     ############################ graph plotting: 
                     if cons.DRAWING != False:
-                        fullILPUtils.draw_graph_transactions(paths_taken,G_copy)
+                        fullILPUtils.draw_graph_transactions(G, paths_taken, G_copy, created_VCs, T)
                         for path in paths_taken:
                             if not os.path.exists(f"src/experiments/results/paths_taken_{graph_size[0]}_{graph_size[1]}_{number_of_graph}.txt"):
                                 with open(f"src/experiments/results/paths_taken_{graph_size[0]}_{graph_size[1]}_{number_of_graph}.txt", "w") as file: 
@@ -145,9 +159,7 @@ if __name__ == '__main__':
                             else:
                                 with open(f"src/experiments/results/paths_taken_{graph_size[0]}_{graph_size[1]}_{number_of_graph}.txt", "a") as file: 
                                     file.write(f"{path} \n")
-                            
-
-                    
+                               
         for _ in range(1):
             os.system('osascript -e "beep"')
             os.system('osascript -e "beep"')

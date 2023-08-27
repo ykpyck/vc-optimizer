@@ -30,16 +30,7 @@ def compute_transactions(G, valid, number_of_transactions):
     return valid, transactions_list
 
 def create_graphs():
-    graph_sizes = []
-    if cons.GRAPH_TOPOLOGY == "rand_sym":
-        for var in range(cons.GRAPH_SIZES_LB, cons.GRAPH_SIZES_UB+1): # what graph sizes to run
-            graph_sizes.append((var, var))
-    elif cons.GRAPH_TOPOLOGY == "ln_ratio":
-        for var in range(cons.GRAPH_SIZES_LB, cons.GRAPH_SIZES_UB+1):
-            nodes_UB = (var*(var-1))/2
-            for var2 in range(int((var*3.5)-1), min(int((var*4.5)+1), int(nodes_UB)+1)): #
-                graph_sizes.append((var, var2))
-
+    graph_sizes = fullILPUtils.compute_graph_sizes()
     for graph_size in graph_sizes:
         directory = f"src/experiments/graphs/{cons.GRAPH_TOPOLOGY}/graph_size_{graph_size[0]}_{graph_size[1]}"
         os.makedirs(directory, 0o700)
@@ -96,24 +87,15 @@ def create_graphs():
                     cid += 1
 
             
-            trans_dir = os.path.join(directory, f"/{cons.NUMBER_OF_TRXS}_transactions")
-            file_path = os.path.join(trans_dir, f"/transactions_{number_of_graph}.txt")
-            os.makedirs(trans_dir, 0o700)
-            with open(file_path, "w") as file:
-                for trxs in transactions_list:
-                    file.write(f"{trxs[0]} {trxs[1]} {trxs[2]} \n")
+            #trans_dir = os.path.join(directory, f"/{cons.NUMBER_OF_TRXS}_transactions")
+            #file_path = os.path.join(trans_dir, f"/transactions_{number_of_graph}.txt")
+            #os.makedirs(trans_dir, 0o700)
+            #with open(file_path, "w") as file:
+            #    for trxs in transactions_list:
+            #        file.write(f"{trxs[0]} {trxs[1]} {trxs[2]} \n")
 
 def add_transactions():
-    graph_sizes = []
-    if cons.GRAPH_TOPOLOGY == "rand_sym":
-        for var in range(cons.GRAPH_SIZES_LB, cons.GRAPH_SIZES_UB+1): # what graph sizes to run
-            graph_sizes.append((var, var))
-    elif cons.GRAPH_TOPOLOGY == "ln_ratio":
-        for var in range(cons.GRAPH_SIZES_LB, cons.GRAPH_SIZES_UB+1):
-            nodes_UB = (var*(var-1))/2
-            for var2 in range(int((var*3.5)-1), min(int((var*4.5)+1), int(nodes_UB)+1)): #
-                graph_sizes.append((var, var2))
-
+    graph_sizes = fullILPUtils.compute_graph_sizes()
     for graph_size in graph_sizes:
         directory = f"src/experiments/graphs/{cons.GRAPH_TOPOLOGY}/graph_size_{graph_size[0]}_{graph_size[1]}"
         trans_dir = f"src/experiments/graphs/{cons.GRAPH_TOPOLOGY}/graph_size_{graph_size[0]}_{graph_size[1]}/{cons.NUMBER_OF_TRXS}_transactions"
@@ -130,5 +112,7 @@ def add_transactions():
             with open(file_path, "w") as file:
                 for trxs in transactions_list:
                     file.write(f"{trxs[0]} {trxs[1]} {trxs[2]} \n")
+
+#create_graphs()
 
 add_transactions()
