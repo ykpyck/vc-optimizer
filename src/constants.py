@@ -14,17 +14,20 @@ GRAPH_TOPOLOGY = UNIQ
 # change back to LN_RATIO
 UNIQ_GRAPH_PATH = "src/experiments/graphs/unique_graphs/graph_prj_rep.csv" #"src/experiments/graphs/unique_graphs/paper-graph.csv"
 UNIQ_TRX_PATH = "src/experiments/graphs/unique_graphs/transactions_prj_rep_10.txt" #"src/experiments/graphs/unique_graphs/paper-transactions.txt"
-LEVELS = [-1]                # what levels of VCs do we allow
+LEVELS = [1]                # what levels of VCs do we allow
 ADVERSARIES = ["adversary"]        
-DRAWING = True
+
 C_TR = 1
 TRANS_AMOUNT_OR_NUM = 1    # 0: at least succ trx amount 1: least num of succ trxs
 METRICS = ['type', 'nodes', 'PCs', 'level',       # 0, 1, 2, 3,
            'avg_pot_paths', 'avg_exec_time_prereq', # 4, 5,
            'avg_exec_time_gurobi', 'avg_obj', 'avg_VCs', 'avg_VCs_created',
            'matrix_dim_m', 'matrix_dim_n', 'matrix_entries'] # 6, 7, 8, 9
-METRIC = 'avg_exec_time_prereq'
+METRIC = 'matrix_dim_n'
 PLOTS = ['avg_result', 'total_avg_result', 'ratio']
 PLOT = False
-SAVE_PLOT = False
-FIG_DIR = f"src/experiments/results/graphs/{METRIC}__{GRAPH_SIZES_LB}_{NUMBER_OF_TRXS}.png"
+###
+DRAWING = True # positions of nodes are manually set to look nice for another graph than the unique project graph 
+SAVE_PLOT = True
+CREATE_TRX_GIF = False
+FIG_DIR = f"src/experiments/results/plots" # no backslash

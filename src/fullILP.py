@@ -152,13 +152,6 @@ if __name__ == '__main__':
                     ############################ graph plotting: 
                     if cons.DRAWING != False:
                         fullILPUtils.draw_graph_transactions(G, paths_taken, G_copy, created_VCs, T)
-                        for path in paths_taken:
-                            if not os.path.exists(f"src/experiments/results/paths_taken_{graph_size[0]}_{graph_size[1]}_{number_of_graph}.txt"):
-                                with open(f"src/experiments/results/paths_taken_{graph_size[0]}_{graph_size[1]}_{number_of_graph}.txt", "w") as file: 
-                                    file.write(f"{path} \n")
-                            else:
-                                with open(f"src/experiments/results/paths_taken_{graph_size[0]}_{graph_size[1]}_{number_of_graph}.txt", "a") as file: 
-                                    file.write(f"{path} \n")
                                
         for _ in range(1):
             os.system('osascript -e "beep"')

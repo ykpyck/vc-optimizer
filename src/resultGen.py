@@ -41,8 +41,8 @@ def create_avg_lvl():
             avg_VCs = column_avg['VCs']
             avg_obj = column_avg['objective']
             avg_VCs_created = column_avg['VCs_created']
-            matrix_dim_m = avg_pot_paths + avg_VCs + avg_VCs
-            matrix_dim_n = PCs + avg_VCs + 1 + number_of_trxs + avg_VCs
+            matrix_dim_n = avg_pot_paths + avg_VCs + avg_VCs
+            matrix_dim_m = PCs + avg_VCs + 1 + number_of_trxs + avg_VCs
             tmp_data = {'type': [graph_type],
                         'nodes': [nodes],
                         'PCs': [PCs],
@@ -96,19 +96,21 @@ def plot_total_avg_results(metric):
 def plot_avg_results():
     level_base, level_zero, level_one = create_avg_lvl()
     fig, ax = plt.subplots()
-    ax.plot(level_base['nodes'], level_base[cons.METRIC], label=f"No VCs", color = "orange")
-    ax.plot(level_zero['nodes'], level_zero[cons.METRIC], label=f"Level 0", color = "gray")
-    ax.plot(level_one['nodes'], level_one[cons.METRIC], label=f"Level 1", color = "blue")
-    ax.set_ylabel(f'{cons.METRIC}')
-    ax.set_title(f'LN miniature version: execution time to number of nodes.')
+    ax.plot(level_base['nodes'], level_base[cons.METRIC], label=f"No VCs", color = "gray")
+    ax.plot(level_zero['nodes'], level_zero[cons.METRIC], label=f"Level 0", color = "blue")
+    ax.plot(level_one['nodes'], level_one[cons.METRIC], label=f"Level 1", color = "orange")
+    y_label = f'Average execution time (Gurobi solver) in seconds'
+    #y_label = f'Average execution time (ILP prerequisites) in seconds'
+    ax.set_ylabel(y_label)
+    #ax.set_title(f'LN miniature version: execution time to number of nodes.')
     ax.legend()
-    ax.set_xlabel('number of nodes')
+    ax.set_xlabel('Number of nodes')
     plt.ylim(ymin=0, ymax=None)
-    plt.show()
     if cons.SAVE_PLOT == True:
-        plt.savefig(cons.FIG_DIR, dpi=300, format="png")
+        plt.savefig(f'{cons.FIG_DIR}/{cons.METRIC}.png', dpi=300, format="png")
+    plt.show()
 
-def calc_ratio(ratio_of = '1'):
+def calc_ratio(ratio_of = '0'):
     level_base, level_zero, level_one = create_avg_lvl()
     if ratio_of == '0':
         ratio = level_zero['avg_obj']/level_base['avg_obj']
@@ -124,29 +126,45 @@ def calc_ratio(ratio_of = '1'):
 def plot_ratio():
     ratio, level = calc_ratio()
     fig, ax = plt.subplots()
-    ax.set_ylabel(f'ratio')
-    ax.set_title(f'G({cons.GRAPH_SIZES_LB}/n): average cost reduction to n number of edges')
+    ax.set_ylabel(f'Ratio between \'Level 0\' and \'Level 1\'')
+    #ax.set_title(f'G({cons.GRAPH_SIZES_LB}/n): average cost reduction to n number of edges')
     ax.legend()
-    ax.set_xlabel('number of edges')
-    plt.ylim(ymin=0, ymax=1)
-    ax.plot(level['PCs'], ratio, color = "orange")
-    plt.show()
+    ax.set_xlabel('Number of nodes')
+    plt.ylim(ymin=0, ymax=1.1)
+    ax.plot(level['nodes'], ratio, color = "orange")
     if cons.SAVE_PLOT == True:
-        plt.savefig(cons.FIG_DIR, dpi=300, format="png")
+        plt.savefig(f'{cons.FIG_DIR}/ratio_no_to_0.png', dpi=300, format="png")
+    plt.show()
 
 def dims_to_runtime():
     fig, ax = plt.subplots()
-    ax.set_ylabel(f'execution time')
-    ax.set_title(f'matrix entries to execution time')
-    ax.set_xlabel('number of matrix entries')
+
+    execution_of = 'avg_exec_time_prereq'
+    #execution_of = 'avg_exec_time_gurobi'
+    if execution_of == 'avg_exec_time_prereq':
+        ax.set_ylabel(f'Execution time (ILP prerequisites) in seconds')
+    else:
+        ax.set_ylabel(f'Execution time (Gurobi solver) in seconds')
+    
+    if cons.METRIC == 'matrix_dim_n':
+        ax.set_xlabel('Matrix dimension m / number of constraints')
+    elif cons.METRIC == 'matrix_dim_m':
+        ax.set_xlabel('Matrix dimension n & size of objective vector')
+    else:
+        ax.set_xlabel('Total possible matrix entries')
+    
+    #ax.set_title(f'Matrix dimension to execution time')
     level_base, level_zero, level_one = create_avg_lvl()
-    df = pd.DataFrame({'x': level_one['avg_exec_time_prereq'].index, 'y1': level_one['avg_exec_time_prereq'], 'y2': level_one['matrix_entries']})
-    df =  df.sort_values(by='y1')
-    plt.plot(df['y2'], df['y1'], marker='o', label='Level 1')
+    df = pd.DataFrame({'x': level_one[f'{execution_of}'].index, 'y1': level_one[f'{execution_of}'], 'y2': level_one[f'{cons.METRIC}']})
+    df =  df.sort_values(by='x')
+    plt.plot(df['y2'], df['y1'], marker='o', label='Level 1', color='orange')
     ax.legend()
+    plt.subplots_adjust(bottom=0.133)
+    if cons.SAVE_PLOT == True:
+        plt.savefig(f'{cons.FIG_DIR}/{cons.METRIC}_{execution_of}.png', dpi=300, format="png")
     plt.show()
     
-var = 'avg_result'
+var = 'dims_to_runtime'
 
 if var == 'avg_result':
     plot_avg_results()

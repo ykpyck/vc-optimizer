@@ -7,6 +7,7 @@ import pandas as pd
 import constants as cons
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from PIL import Image
 
 # set(s) of graphs are defined, first tuple entry relates to number of nodes, second to number of edges
 def compute_graph_sizes():
@@ -330,33 +331,6 @@ def vc_capacity(G, T, P, row_cons_iterator, number_of_VCs, fee_dict):
     return val, row, col, rhs
 
 def draw_graph_transactions(G, paths_taken, G_copy, created_VCs, T):
-    '''
-    relevant_nodes = []
-
-    for edge in created_VCs:
-        if not edge[0] in relevant_nodes:
-            relevant_nodes.append(edge[0])
-        if not edge[1] in relevant_nodes:
-            relevant_nodes.append(edge[1])
-        if edge not in G_copy.edges:
-            G_copy.add_edge(edge[0], edge[1], key=edge[2])
-
-    nt = Network(height="750px", width="100%", bgcolor="#222222", font_color="white")
-    nt.barnes_hut()
-
-    for node in G_copy.nodes():
-        nt.add_node(node, node, title = node)
-    for edge in G_copy.edges():
-        if edge in created_VCs:
-            nt.add_edge(edge[0], edge[1])
-        else:
-            nt.add_edge(edge[0], edge[1])
-
-    #nt.from_nx(G_pyvis)
-    nt.show_buttons(filter_=['physics'])
-    nt.save_graph('mygraph.html')
-    #nt.show('mygraph.html')
-    '''
     node_size = []
     relevant_nodes = []
     deg_centr = nx.degree_centrality(G_copy)
@@ -380,18 +354,10 @@ def draw_graph_transactions(G, paths_taken, G_copy, created_VCs, T):
     for edge in G_tmp:
         node_size.append(deg_centr[edge]*1900)
 
-    fixed_pos = {'0': (10.5,3.5),
-                 '1': (9,15),
-                 '2': (6,18.5),
-                 '3': (16,3),
-                 '4': (5,16.5),
-                 '5': (10,-1),
-                 '6': (15,14),
-                 '7': (16,21),
-                 '8': (7.5,2),
-                 '9': (8,19),
-                 '10': (14.5,8),
-                 '11': (15,9),
+    fixed_pos = {'0': (10.5,3.5), '1': (9,15), '2': (6,18.5),
+                 '3': (16,3), '4': (5,16.5), '5': (10,-1),
+                 '6': (15,14), '7': (16,21), '8': (7.5,2),
+                 '9': (8,19), '10': (14.5,8), '11': (15,9),
                  '12': (8.5,24)}
 
     edge_color = []
@@ -435,18 +401,67 @@ def draw_graph_transactions(G, paths_taken, G_copy, created_VCs, T):
 
     custom_legend_handles = [
         Line2D([0], [0], color='orange', markersize=10, label='VC'), 
-        Line2D([0], [0], color='black', markersize=10, label='PC'),
-        Patch(color='white', label=f'{len(T)} transactions'),
-        ] #Patch(color='white', label=transaction_string)
+        Line2D([0], [0], color='black', markersize=10, label='PC')
+        ] 
 
     ax.legend(handles=custom_legend_handles)
 
-    #ax.set_title(f'Graph G({len(G_tmp.nodes)}/{len(G_copy.edges)}) with {len(T)} transactions', fontsize=14, fontweight='bold')
-    #ax.annotate(f"{len(created_VCs)} VCs created while allowing VCs of level 1", xy=(0.5, 1), xytext=(0.5, 0.98),
-    #        fontsize=8, fontweight='normal', ha='center', va='center',
-    #        xycoords='axes fraction', textcoords='axes fraction')
-
     plt.subplots_adjust(right=1, top=1, bottom=0,left=0)
-    
-    plt.savefig(f"src/experiments/results/network.png", dpi=300, format="png", bbox_inches='tight')
+    if cons.SAVE_PLOT:
+        plt.savefig(f"{cons.FIG_DIR}/network.png", dpi=300, format="png", bbox_inches='tight')
     plt.show()
+    if cons.CREATE_TRX_GIF:
+        index = 0
+        image_paths = []
+        for path in paths_taken:
+            path_wo_key = [(t[0], t[1]) for t in path[0]]
+            edge_color = []
+            edge_width = []
+            edge_color_2 = []
+            edge_width_2 = []
+            style = []
+            style_2 = []
+            for i, edge in enumerate(G_tmp.edges):
+                if not edge in G_copy.edges:
+                    edge_color.append('white')
+                    edge_width.append(0)
+                    style.append('solid')
+                    edge_color_2.append('orange')
+                    edge_width_2.append(2)
+                    style_2.append('solid')
+                else: 
+                    edge_color.append('black')
+                    edge_width.append(2)
+                    style.append('solid')
+                    edge_color_2.append('white')
+                    edge_width_2.append(0)
+                    style_2.append('solid')
+                if (edge[0],edge[1]) in path_wo_key or (edge[1],edge[0]) in path_wo_key:
+                    if not edge in G_copy.edges:
+                        edge_color_2.pop()
+                        edge_width_2.pop()
+                        edge_color_2.append('green')
+                        edge_width_2.append(5)
+                    else: 
+                        edge_color.pop()
+                        edge_width.pop()
+                        edge_color.append('green')
+                        edge_width.append(5)
+            fig, ax = plt.subplots(figsize=(12, 7))
+
+            nx.draw(G_tmp, with_labels=True, pos=fixed_pos, edge_color=edge_color, 
+                    width=edge_width)   
+            nx.draw(G_tmp, with_labels=True, pos=fixed_pos, edge_color=edge_color_2, 
+                    width=edge_width_2, connectionstyle = 'arc3,rad=-0.2', arrows=True)
+            nx.draw_networkx_nodes(G_tmp, pos=fixed_pos, linewidths= 1, edgecolors='black', 
+                                   node_color='white', node_size=400)
+
+            index += 1
+            file_path = f"{cons.FIG_DIR}/network_trx_{index}.png"
+            plt.savefig(file_path, dpi=300, format="png", bbox_inches='tight')
+            image_paths.append(file_path)
+
+        images = [Image.open(path) for path in image_paths]
+        file_path = f"{cons.FIG_DIR}/network_trxs.gif"
+        images[0].save(file_path, save_all=True, append_images=images[1:], duration=300, loop=0)
+
