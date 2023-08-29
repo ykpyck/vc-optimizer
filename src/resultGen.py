@@ -8,7 +8,7 @@ import constants as cons
 def create_avg_lvl():
     result_path = f'src/experiments/results/graph_size_{cons.GRAPH_SIZES_LB}/results_{cons.GRAPH_SIZES_LB}_{cons.NUMBER_OF_TRXS}.txt'
     result_path = f'src/experiments/results/results.txt'
-    #result_path = f'src/experiments/results/results_10-17_5_trxs.txt'
+    result_path = f'src/experiments/results/results_prj_rep.txt'
 
     delimiter = r'\s+'
     df = pd.read_csv(result_path, sep=delimiter)
@@ -54,8 +54,8 @@ def create_avg_lvl():
                         'avg_VCs': [avg_VCs],
                         'x_axis': index_var,
                         'avg_VCs_created': avg_VCs_created,
-                        'matrix_dim_m': matrix_dim_n,
-                        'matrix_dim_n': matrix_dim_m,
+                        'matrix_dim_m': matrix_dim_m,
+                        'matrix_dim_n': matrix_dim_n,
                         'matrix_entries': matrix_dim_m*matrix_dim_n}
             index_var += 1
 
@@ -110,7 +110,7 @@ def plot_avg_results():
         plt.savefig(f'{cons.FIG_DIR}/{cons.METRIC}.png', dpi=300, format="png")
     plt.show()
 
-def calc_ratio(ratio_of = '0'):
+def calc_ratio(ratio_of = '01'):
     level_base, level_zero, level_one = create_avg_lvl()
     if ratio_of == '0':
         ratio = level_zero['avg_obj']/level_base['avg_obj']
@@ -126,14 +126,14 @@ def calc_ratio(ratio_of = '0'):
 def plot_ratio():
     ratio, level = calc_ratio()
     fig, ax = plt.subplots()
-    ax.set_ylabel(f'Ratio between \'Level 0\' and \'Level 1\'')
+    ax.set_ylabel(f'Ratio \'Level 0\' to \'Level 1\'')
     #ax.set_title(f'G({cons.GRAPH_SIZES_LB}/n): average cost reduction to n number of edges')
-    ax.legend()
+    #ax.legend()
     ax.set_xlabel('Number of nodes')
     plt.ylim(ymin=0, ymax=1.1)
     ax.plot(level['nodes'], ratio, color = "orange")
     if cons.SAVE_PLOT == True:
-        plt.savefig(f'{cons.FIG_DIR}/ratio_no_to_0.png', dpi=300, format="png")
+        plt.savefig(f'{cons.FIG_DIR}/ratio_0_to_1.png', dpi=300, format="png")
     plt.show()
 
 def dims_to_runtime():
@@ -141,14 +141,17 @@ def dims_to_runtime():
 
     execution_of = 'avg_exec_time_prereq'
     #execution_of = 'avg_exec_time_gurobi'
+    #execution_of = 'matrix_dim_n'
     if execution_of == 'avg_exec_time_prereq':
         ax.set_ylabel(f'Execution time (ILP prerequisites) in seconds')
-    else:
+    elif execution_of == 'avg_exec_time_gurobi':
         ax.set_ylabel(f'Execution time (Gurobi solver) in seconds')
+    else:
+        ax.set_ylabel(f'Matrix dimension m / number of constraints')
     
-    if cons.METRIC == 'matrix_dim_n':
+    if cons.METRIC == 'matrix_dim_m':
         ax.set_xlabel('Matrix dimension m / number of constraints')
-    elif cons.METRIC == 'matrix_dim_m':
+    elif cons.METRIC == 'matrix_dim_n':
         ax.set_xlabel('Matrix dimension n & size of objective vector')
     else:
         ax.set_xlabel('Total possible matrix entries')
