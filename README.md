@@ -21,11 +21,11 @@ The following packages are required to run this project:
 
 The following files are included in this project:
 
-- [fullILP.py](http://fullilp.py/)
-- [fullILPUtils.py](http://fullilputils.py/)
-- [constants.py](http://constants.py/)
-- [lightningMiniatureGen.py](http://lightningminiaturegen.py/)
-- [randGraphGenerator.py](http://randgraphgenerator.py/)
+- [fullILP.py]
+- [fullILPUtils.py]
+- [constants.py]
+- [lightningMiniatureGen.py]
+- [randGraphGenerator.py]
 
 ## Walkthrough
 
