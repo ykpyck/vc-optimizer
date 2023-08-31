@@ -298,5 +298,5 @@ def create_graphs():
             save_graph_csv(G, file_path)
 
 
-#create_graphs()
+create_graphs()
 add_transactions()

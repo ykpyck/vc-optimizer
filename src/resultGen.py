@@ -41,6 +41,7 @@ def create_avg_lvl():
             avg_VCs = column_avg['VCs']
             avg_obj = column_avg['objective']
             avg_VCs_created = column_avg['VCs_created']
+            avg_graph_diameter = column_avg['graph_diameter']
             matrix_dim_n = avg_pot_paths + avg_VCs + avg_VCs
             matrix_dim_m = PCs + avg_VCs + 1 + number_of_trxs + avg_VCs
             tmp_data = {'type': [graph_type],
@@ -56,7 +57,8 @@ def create_avg_lvl():
                         'avg_VCs_created': avg_VCs_created,
                         'matrix_dim_m': matrix_dim_m,
                         'matrix_dim_n': matrix_dim_n,
-                        'matrix_entries': matrix_dim_m*matrix_dim_n}
+                        'matrix_entries': matrix_dim_m*matrix_dim_n,
+                        'graph_diameter': avg_graph_diameter}
             index_var += 1
 
             tmp_df = pd.DataFrame(tmp_data)
@@ -96,11 +98,12 @@ def plot_total_avg_results(metric):
 def plot_avg_results():
     level_base, level_zero, level_one = create_avg_lvl()
     fig, ax = plt.subplots()
-    ax.plot(level_base['nodes'], level_base[cons.METRIC], label=f"No VCs", color = "gray")
     ax.plot(level_zero['nodes'], level_zero[cons.METRIC], label=f"Level 0", color = "blue")
     ax.plot(level_one['nodes'], level_one[cons.METRIC], label=f"Level 1", color = "orange")
-    y_label = f'Average execution time (Gurobi solver) in seconds'
+    ax.plot(level_base['nodes'], level_base[cons.METRIC], label=f"No VCs", color = "gray")
+    #y_label = f'Average execution time (Gurobi solver) in seconds'
     #y_label = f'Average execution time (ILP prerequisites) in seconds'
+    y_label = f'Average graph diameter'
     ax.set_ylabel(y_label)
     #ax.set_title(f'LN miniature version: execution time to number of nodes.')
     ax.legend()
@@ -167,7 +170,7 @@ def dims_to_runtime():
         plt.savefig(f'{cons.FIG_DIR}/{cons.METRIC}_{execution_of}.png', dpi=300, format="png")
     plt.show()
     
-var = 'dims_to_runtime'
+var = cons.TO_PLOT
 
 if var == 'avg_result':
     plot_avg_results()
