@@ -65,7 +65,7 @@ if __name__ == '__main__':
                     # Set objective                 -> routing_fee(t, p, ch_ij)
                     fee_dict, obj = fullILPUtils.set_objective(P, T, G, number_of_VCs)
                     m.setObjective(obj @ x, GRB.MINIMIZE)
-                    print(f'Objective vector of dimenseion (1,{len(obj)}) set.')
+                    print(f'Objective vector of dimension (1,{len(obj)}) set.')
                     print(f'Computing constraints...')
                     pool = mp.Pool()
                     # Build (sparse) constraint matrix 

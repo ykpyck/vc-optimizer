@@ -375,7 +375,13 @@ def draw_graph_transactions(G, paths_taken, G_copy, created_VCs, T):
             edge_color_2.append('orange')
             edge_width_2.append(1.5)
             style_2.append('solid')
-            edge_labels[(edge[0], edge[1])] = f"Level {G.get_edge_data(edge[0], edge[1], key=edge[2])['level']} VC over {G.get_edge_data(edge[0], edge[1], key=edge[2])['intermediary_edges']}." #['intermediaries']
+            level = G.get_edge_data(edge[0], edge[1], key=edge[2])['level']
+            intermediary_edges = G.get_edge_data(edge[0], edge[1], key=edge[2])['intermediary_edges']
+            edges = []
+            for i, edge_tmp in enumerate(intermediary_edges):
+                if level == 0 or (level > 0 and i > 1):
+                    edges.append(edge_tmp)
+            edge_labels[(edge[0], edge[1])] = f"Level {level} VC over: \'{edges[0][0]}\' - \'{edges[0][1]}\' and \'{edges[1][0]}\' - \'{edges[1][1]}\'." #['intermediaries']
         else: 
             edge_color.append('black')
             edge_width.append(2)
@@ -390,7 +396,7 @@ def draw_graph_transactions(G, paths_taken, G_copy, created_VCs, T):
     nx.draw(G_tmp, with_labels=True, pos=fixed_pos, edge_color=edge_color_2, 
             width=edge_width_2, connectionstyle = 'arc3,rad=-0.2', arrows=True)
     nx.draw_networkx_edge_labels(G_tmp, pos=fixed_pos, edge_labels = edge_labels, 
-                                 font_size=8, rotate=False, label_pos=0.3,
+                                 font_size=8, rotate=False, label_pos=0.17,
                                  bbox=dict(boxstyle='round', alpha=0.7, fc='lightgray', ec='orange', linewidth=0.5))
     nx.draw_networkx_nodes(G_tmp, pos=fixed_pos, linewidths= 1, edgecolors='black', node_color='white',
                            node_size=400)
